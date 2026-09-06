@@ -1,4 +1,10 @@
-# React + TypeScript + Vite
+# Team Scholaris
+
+The AUTH-01 frontend foundation is in place. Run `npm run dev` to preview it.
+Authentication is not connected yet; login and registration controls are disabled.
+See [the setup, audit, and manual test guide](docs/auth-foundation.md) for the current scope and next steps.
+
+## Original Vite template notes
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
