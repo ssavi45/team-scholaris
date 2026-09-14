@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router'
 import { AuthPage } from '../features/auth/AuthPage'
 import { ProtectedRoute } from '../features/auth/ProtectedRoute'
 import { AuthCallbackPage } from '../features/auth/AuthCallbackPage'
+import { ResetPasswordPage } from '../features/auth/ResetPasswordPage'
 import { AppShell } from '../components/layout/AppShell'
 import { DashboardPage } from '../features/projects/DashboardPage'
 import { ProjectPage } from '../features/projects/ProjectPage'
@@ -17,11 +18,12 @@ export const router = createBrowserRouter([{
     { path: '/auth/callback', element: <AuthCallbackPage /> },
     {
       element: <ProtectedRoute />,
-      children: [{
+      children: [{ path: '/reset-password', element: <ResetPasswordPage /> }, {
         element: <AppShell />,
         children: [
           { path: '/app', element: <DashboardPage /> },
           { path: '/project/:projectId', element: <ProjectPage /> },
+          { path: '/project/:projectId/paper', lazy: async () => ({ Component: (await import('../features/paper/PaperPage')).PaperPage }) },
         ],
       }],
     },

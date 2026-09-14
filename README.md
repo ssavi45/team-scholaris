@@ -1,8 +1,25 @@
 # Team Scholaris
 
-The AUTH-01 frontend foundation is in place. Run `npm run dev` to preview it.
-Authentication is not connected yet; login and registration controls are disabled.
-See [the setup, audit, and manual test guide](docs/auth-foundation.md) for the current scope and next steps.
+Local Supabase authentication is connected: registration, email verification,
+login, password recovery, persistent sessions, and logout. Google OAuth still
+requires provider credentials. PROJECT-01 adds a real dashboard, project creation,
+and private project overviews with database-enforced ownership and limits.
+See [PROJECT-01](docs/project-01.md) for behavior and acceptance tests.
+INVITE-01 adds owner invitations, local email delivery, verified acceptance,
+and shared team access. See [invitation setup and tests](docs/invite-01.md).
+PAPER-01 adds a single-user LaTeX source editor with versioned saves and a file tree.
+See [paper workspace setup and tests](docs/paper-01.md).
+PAPER-02 adds browser-side LaTeX compilation, PDF preview, and a full-width editing layout.
+See [compilation and preview](docs/paper-02.md) for usage, requirements, and tests.
+PAPER-03 adds PDF and source ZIP downloads through the paper toolbar's **Export** action.
+See [paper exports](docs/paper-03.md) for snapshot and unsaved-draft behavior.
+
+With Docker Desktop running, run `npx --no-install supabase start`, then
+`npm run dev`. Open http://127.0.0.1:5173. Local verification/reset emails
+appear in Mailpit at http://127.0.0.1:54324.
+
+See [the setup and manual test guide](docs/auth-foundation.md) for environment
+configuration, validation commands, Google OAuth setup, and remaining work.
 
 ## Original Vite template notes
 

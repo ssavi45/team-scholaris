@@ -1,0 +1,25 @@
+Team Scholaris uses SwiftLaTeX pdfTeX for browser-side compilation.
+
+Unmodified engine artifacts: SwiftLaTeX release v20022022 (20 February 2022).
+Copyright notices and component licenses are retained in the upstream source.
+License: GNU General Public License v3 (see LICENSE in this directory).
+Upstream source and build scripts, exact revision:
+https://github.com/SwiftLaTeX/SwiftLaTeX/tree/912068d6f746a58c210eec69053ef72e2ed60b4c
+Download corresponding source:
+https://github.com/SwiftLaTeX/SwiftLaTeX/archive/912068d6f746a58c210eec69053ef72e2ed60b4c.tar.gz
+Release binaries:
+https://github.com/SwiftLaTeX/SwiftLaTeX/releases/tag/v20022022
+
+swiftlatexpdftex.js  SHA256 019ccf66c2981cc3a371ca8983f8a0f191952e28b5df3c0b41c2e3ed80f9be65
+swiftlatexpdftex.wasm  SHA256 154d08cbb298191cefe1bdd9e47a909d60fc7a96fce5f2319bfc6878c5b61cf1
+
+Scholaris adapter: scholaris-worker.js (14 September 2026); separate source file.
+Package files/fonts are downloaded on demand from https://texlive.texlyre.org,
+operated by TeXlyre. Requests include package filenames and your IP address.
+Document source is compiled in worker memory; it is not submitted to a compilation server.
+Generated auxiliary files and bibliography source are not requested from the package server.
+Package availability depends on this external service; first compilation needs internet access.
+Individual TeX packages and fonts retain their respective upstream licenses.
+
+PDF preview: Mozilla PDF.js, Apache-2.0 license.
+https://github.com/mozilla/pdf.js

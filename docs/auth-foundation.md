@@ -1,50 +1,110 @@
-# AUTH-01 frontend foundation
+# AUTH-01 local development
 
-The repository audit found React 19, TypeScript 6, Vite 8, Tailwind 4 (with the Vite plugin), React Router 8, Supabase JS, and the Supabase CLI already installed. No dependency installation was needed. The existing app was a heading with no router, client, or environment files. Supabase has generated CLI configuration but no migrations or seed file. No backend credentials were found in environment files or relevant process variables. No backend connection has been verified and Docker was not started.
+## Current state
 
-## Current boundary
+Docker Desktop and the local Supabase stack are running. Email/password registration, required email verification, resend verification, login, session persistence/refresh, logout, password recovery, and PKCE callbacks are connected. User profiles are created by a database trigger and protected by RLS.
 
-This increment is frontend structure only. Authentication controls are disabled and cannot submit credentials. Adding environment variables does **not** enable authentication. Login, registration, reset, and callback routes explicitly explain this. No fake sessions or application data are created.
+Google OAuth is wired but disabled until provider credentials are configured. AUTH-01 still needs Google end-to-end verification and interactive browser acceptance checks. PROJECT-01 subsequently connected the dashboard and project routes; see [the project guide](project-01.md). INVITE-01 adds invitations and shared team access; see [the invitation guide](invite-01.md).
 
-The protected route deliberately denies all access by redirecting to login. The application shell, dashboard, and project page are placeholders behind it; they are not preview routes. Supabase session integration will replace this boundary in the next increment. Frontend route protection never replaces database RLS.
+## Start development
 
-Incoming query parameters are retained when moving between auth forms, and protected routes retain the original path/query in `next`. This is navigation plumbing only: secure invitation persistence across signup/OAuth, redirect validation, and server-side invitation acceptance are still outstanding.
-
-`src/lib/supabase.ts` prepares an optional client when configuration is valid. It is not imported into the application yet, so this preview makes no auth calls or callback exchanges. Environment validation accepts publishable keys and legacy JWT keys whose declared role is exactly `anon`. It rejects secret keys, service-role JWTs, other/missing roles, and malformed credentials. JWT inspection is not signature verification and does not establish authenticity, connectivity, or whether the key belongs to the project. Validation cannot keep a secret out of a Vite bundle: never put a secret in a `VITE_` variable.
-
-## Run and check
+From the repository root with Docker Desktop running:
 
 ```powershell
-npm install # only if dependencies are not already installed
+npx --no-install supabase start
 npm run dev
-npm run lint
-npm run build
 ```
 
-Open the URL printed by Vite (normally http://localhost:5173).
+- Application: http://127.0.0.1:5173
+- Supabase Studio: http://127.0.0.1:54323
+- Local email inbox (Mailpit): http://127.0.0.1:54324
+- Supabase API: http://127.0.0.1:54321
 
-1. `/` redirects to `/login`. Confirm the unavailable-auth notice and disabled Google, email/password, and sign-in controls.
-2. Follow Create account. Check Name, Email, Password, Confirm password, and the verification note. Follow Back to sign in and Forgot password.
-3. Open `/project/example?invite=sample-context`. It redirects to login with `next` preserved. Moving to register and reset retains that query. `/app` also redirects. No project content is exposed.
-4. Open `/auth/callback`. It explains that callback integration is pending and does not claim success.
-5. Open an unknown URL. Check the 404 and return link. Refresh each public route.
-6. Check the forms at a narrow mobile window and navigate links with Tab/Enter. Disabled controls should not accept credentials.
-7. Optionally copy `.env.example` to `.env.local`. Start with blanks, then malformed values; restart Vite each time. Pages should remain usable with a helpful development setup notice. Do not use real secrets as test inputs.
+Vite uses port 5173 with strictPort enabled so auth redirects cannot silently switch ports. Use the same frontend origin and browser throughout a signup/recovery flow. PKCE links need the verifier stored in the browser that requested them. Local email is captured in Mailpit, not delivered to a real mailbox.
 
-## Next increment: connect a hosted development backend
+An ignored `.env.local` was created with only the local API URL, public publishable key, and `VITE_GOOGLE_AUTH_ENABLED=false`. On a fresh checkout, copy `.env.example` to `.env.local` and copy the public key shown by `npx --no-install supabase status`. That command also displays server credentials: do not copy them into the frontend.
 
-Use `.env.local` for `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Keep this variable name for either a publishable (`sb_publishable_`) key or a legacy `anon` JWT key from your hosted development project or local Supabase CLI stack. Local development normally uses `http://127.0.0.1:54321`; loopback HTTP URLs are accepted, while remote URLs require HTTPS. Copy only the public key supplied by your project; never use service-role/secret keys or JWT signing secrets in any frontend variable. See [Supabase's API key documentation](https://supabase.com/docs/guides/getting-started/api-keys) for public versus privileged credential types. Adding configuration still does not connect authentication.
+`VITE_SUPABASE_PUBLISHABLE_KEY` accepts either a publishable key or a legacy JWT with declared role exactly `anon`, for hosted or local development. Validation rejects secret keys, service-role/user JWTs, and malformed credentials. It does not cryptographically verify JWT signatures. Never put privileged keys or signing secrets in any `VITE_` variable; these variables are exposed by Vite.
 
-Before implementing or testing real auth, configure the hosted project: enable email verification, set the site URL to the actual frontend origin, allow the exact `/auth/callback` redirect URL, and configure Google OAuth. The generated local CLI configuration currently uses port 3000, disables email confirmations, and references a nonexistent seed file; it has been preserved and is not suitable for the acceptance flow as-is. Hosted settings are configured separately. Production hosting will need SPA fallback to `index.html` for direct routes.
+Local Supabase settings now require email confirmation, use an 8-character password minimum, allow the frontend callback URL, and have no seed-file reference. Optional analytics was disabled after its Logflare container failed startup health checks; database/auth/mail services work without it. No database reset was performed.
 
-Then implement verified session loading/error states, registration/login/logout, Google OAuth, callback handling, password recovery, profile creation with RLS, and pending invitation preservation. Test against the real backend. AUTH-01 and Milestone 1 are **not complete** until their real acceptance flows pass.
+## Database and authorization
 
-## File inventory
+`supabase/migrations/20260907000100_profiles.sql` creates:
 
-Created: `.env.example`; this document; `src/app/router.tsx`, `src/app/status-pages.tsx`; `src/components/layout/AppShell.tsx`; `src/features/auth/{AuthLayout,AuthPage,AuthCallbackPage,ProtectedRoute}.tsx`; `src/features/projects/{DashboardPage,ProjectPage}.tsx`; `src/lib/{env,supabase,constants}.ts`.
+- `profiles`: ID linked to `auth.users`, name, optional avatar URL, and timestamps.
+- A signup trigger that creates each profile (also for Google signups).
+- RLS allowing authenticated users to read/update only their own profile.
+- Column grants restricting client updates to name/avatar, with no client insert/delete access.
+- A trigger maintaining the update timestamp.
 
-Modified: `src/App.tsx`, `src/index.css`, `index.html`, `.gitignore`, `README.md`. Existing package, Vite, and Supabase setup changes were preserved.
+The frontend route boundary requires a session with confirmed email. It is UX protection, not database authorization. Project membership checks and project RLS must be added with the next feature before any project data is exposed.
 
-## Verification results
+Safe internal destinations and pending `invite` context survive auth form links and email/OAuth callbacks. Session storage is a fallback for navigation context only; it is not fake authentication. Invitation tokens are not validated or accepted in this increment. The eventual invitation backend must enforce token expiration, target email, and membership rules.
 
-`npm ls --depth=0` confirmed all required dependencies. `npm run build`, `npm run lint`, and `git diff --check` passed. The initial sandboxed Vite build/dev attempts failed with `spawn EPERM` and a native-module loading error; both succeeded outside the sandbox without package changes. The development server returned the application entry point for all eight tested route URLs. This HTTP check does not verify client-side rendering or redirects. Browser verification was unavailable because no browser was connected; the manual UI checks above remain to be performed. No backend acceptance tests were run.
+Password recovery opens `/reset-password` after a successful callback. Updating the password keeps the current authenticated session; the user can continue to the dashboard and sign out.
+
+## Checks
+
+```powershell
+npm run lint
+npm run build
+git diff --check
+node scripts/test-auth-navigation.mjs
+node scripts/test-local-auth.mjs
+```
+
+The local integration test uses only the generated public publishable key. It refuses non-local API URLs. It creates two accounts with unique `auth-test-...` emails and random passwords; these accounts and captured emails remain for inspection. It tests signup, rejection before verification, PKCE exchange/replay rejection, invitation query retention, profile creation, cross-user/anonymous access denial, own-profile updates, session restoration/refresh, logout, incorrect passwords, and password recovery/replacement.
+
+The navigation test checks unsafe redirects, query filtering, invitation context retention/cleanup, and operation when session storage is blocked. It uses installed TypeScript and Node; no testing dependency was added.
+
+The production build may report a non-blocking chunk-size warning after including the Supabase SDK. Windows sandboxed Vite commands can fail with `spawn EPERM`; build succeeds with normal process permissions.
+
+## Manual acceptance
+
+1. Open the application and create a new account with name, email, password, and confirmation.
+2. Before verifying, attempt to sign in: Supabase must reject it. Check the resend-verification action if needed.
+3. Open Mailpit, find the verification email, and follow its link in the same browser/origin used for signup. The callback should open the dashboard.
+4. Refresh the dashboard, then sign out. Directly visiting `/app` must return to login. Sign in again.
+5. Sign out and use Forgot password. Open the newest reset email in the same browser; choose a matching new password. Continue to the workspace, sign out, and verify that only the new password works.
+6. Check wrong passwords, mismatched confirmations, missing/expired callback links, keyboard navigation, and a narrow mobile viewport.
+7. Open `/project/example?invite=sample-context` while signed out. Complete auth and confirm the context remains in the destination URL. Since this is not a real project ID, the project page should show Project unavailable.
+8. Complete the Google checks below once credentials exist.
+
+API checks do not substitute for these interactive UI checks. No browser was connected during the implementation run.
+
+## Google OAuth setup (remaining)
+
+Follow [Supabase's Google sign-in guide](https://supabase.com/docs/guides/auth/social-login/auth-google):
+
+1. In Google Cloud, configure the consent screen and a Web application OAuth client. Add test users if the consent screen is in testing mode.
+2. Add `http://localhost:5173` as an authorized JavaScript origin, and `http://127.0.0.1:54321/auth/v1/callback` as the authorized redirect URI. This is Supabase's provider callback, distinct from the frontend's `/auth/callback`.
+3. Store the client ID and secret in an ignored root `.env` (without a `VITE_` prefix):
+
+```dotenv
+SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=
+SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET=
+```
+
+4. Add this section to `supabase/config.toml` after the values are available:
+
+```toml
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"
+redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
+```
+
+5. Restart the local stack with `npx --no-install supabase stop`, then `npx --no-install supabase start`. Do not use `--no-backup` or reset the database.
+6. Set `VITE_GOOGLE_AUTH_ENABLED=true` in `.env.local`, restart Vite, and test Google login, callback, profile creation, refresh, and logout.
+
+For a hosted project, apply the migration and configure email confirmation, site/callback URLs, and Google in that project's dashboard. Use its public credentials in `.env.local`. Hosted configuration and deployment were not performed.
+
+## Changed files for the connected-auth increment
+
+Created: `AuthProvider.tsx`, `auth-context.ts`, `auth-navigation.ts`, `ResetPasswordPage.tsx` under `src/features/auth/`; the profiles migration; `scripts/test-local-auth.mjs`; `scripts/test-auth-navigation.mjs`; ignored `.env.local`.
+
+Updated: `src/App.tsx`, `src/app/router.tsx`, `src/components/layout/AppShell.tsx`, `src/features/auth/{AuthPage,AuthCallbackPage,ProtectedRoute}.tsx`, `src/lib/supabase.ts`, `src/index.css`, `supabase/config.toml`, `vite.config.ts`, `.env.example`, `README.md`, and this guide. No packages were installed.
+
+PROJECT-01 now delivers dashboard data and create/open project with database-enforced ownership and limits. INVITE-01 adds invitations and shared team access; see [the invitation guide](invite-01.md).
