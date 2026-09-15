@@ -2,13 +2,15 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSPropertie
 import { Link, useBlocker, useParams } from 'react-router'
 import { useAuth } from '../auth/auth-context'
 import { loadProject } from '../projects/projects-api'
-import { createPaperFile, initializePaper, loadPaper, savePaperFile, type PaperFile } from './paper-api'
+import { createPaperFile, hydrateFigures, initializePaper, loadPaperSettings, loadPaperState, savePaperFile, type PaperFile } from './paper-api'
 import { SourceEditor } from './SourceEditor'
 import { compilePaper, CompileError, sourceSignature, type Compilation } from './compiler'
 import type { ExportSnapshot } from './ExportDialog'
 
 const PdfPreview = lazy(async () => ({ default: (await import('./PdfPreview')).PdfPreview }))
 const ExportDialog = lazy(() => import('./ExportDialog'))
+const FileManager = lazy(() => import('./FileManager'))
+const FigurePreview = lazy(() => import('./FigurePreview'))
 
 export function PaperPage() {
   const { projectId = '' } = useParams()
@@ -19,10 +21,10 @@ export function PaperPage() {
 function FileTree({ files, selected, choose, prefix = '' }: {
   files: PaperFile[]; selected?: string; choose: (file: PaperFile) => void; prefix?: string
 }) {
-  const folders = [...new Set(files.filter((file) => file.path.slice(prefix.length).includes('/')).map((file) => file.path.slice(prefix.length).split('/')[0]))].sort()
+  const folders = [...new Set(files.filter((file) => file.kind === 'folder' || file.path.slice(prefix.length).includes('/')).map((file) => file.path.slice(prefix.length).split('/')[0]))].sort()
   return <ul className="source-tree">
     {folders.map((folder) => <li key={folder}><details open><summary>{folder}</summary><FileTree files={files.filter((file) => file.path.startsWith(`${prefix}${folder}/`))} selected={selected} choose={choose} prefix={`${prefix}${folder}/`} /></details></li>)}
-    {files.filter((file) => !file.path.slice(prefix.length).includes('/')).map((file) => <li key={file.id}><button type="button" aria-current={selected === file.id ? 'true' : undefined} onClick={() => choose(file)}>{file.path.slice(prefix.length)}</button></li>)}
+    {files.filter((file) => file.kind !== 'folder' && !file.path.slice(prefix.length).includes('/')).map((file) => <li key={file.id}><button type="button" aria-current={selected === file.id ? 'true' : undefined} onClick={() => choose(file)}>{file.path.slice(prefix.length)}</button></li>)}
   </ul>
 }
 
@@ -51,11 +53,14 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
   const [output, setOutput] = useState<(Compilation & { id: number }) | null>(null)
   const job = useRef<AbortController | null>(null)
   const [exportSnapshot, setExportSnapshot] = useState<ExportSnapshot | null>(null)
+  const [settings, setSettings] = useState<{ main_file: string; revision: number } | null>(null)
+  const [manager, setManager] = useState(false)
+  const mainFile = settings?.main_file ?? 'main.tex'
   const dirty = selected !== null && draft !== selected.content
   const access = project?.members.find((member) => member.user_id === user?.id)?.access_level
   const editable = project?.project.status === 'active' && (access === 'owner' || access === 'member')
   const blocker = useBlocker(dirty || busy)
-  const savedSignature = useMemo(() => sourceSignature(files), [files])
+  const savedSignature = useMemo(() => sourceSignature(files, mainFile), [files, mainFile])
   const stale = !!output && (dirty || output.signature !== savedSignature)
   const warningCount = (compileLog.match(/(?:LaTeX|Package [\w-]+) Warning:/g) ?? []).length
 
@@ -76,13 +81,16 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       }
       const data = await loadProject(projectId, controller.signal)
       if (!data) throw new Error('Project unavailable. Your previous preview has been cleared.')
-      const snapshot = await loadPaper(projectId, controller.signal)
+      const loaded = await loadPaperState(projectId, controller.signal)
+      const snapshot = loaded.files
       if (controller.signal.aborted) return
-      setProject(data); setFiles(snapshot)
+      setProject(data); setFiles(snapshot); setSettings(loaded.settings)
       const current = snapshot.find((file) => file.id === selected?.id) ?? snapshot[0] ?? null
       setSelected(current); setDraft(current?.content ?? '')
       inFlight.current = false; setBusy(false); preparing = false
-      const result = await compilePaper(snapshot, controller.signal, setCompileStatus)
+      setCompileStatus('Loading paper figures...')
+      const sources = await hydrateFigures(snapshot, controller.signal)
+      const result = await compilePaper(sources, controller.signal, setCompileStatus, undefined, undefined, loaded.settings?.main_file ?? 'main.tex')
       if (controller.signal.aborted) return
       setOutput({ ...result, id: Date.now() }); setCompileLog(result.log); setCompileStatus('PDF compiled successfully'); setLogOpen(false)
     } catch (cause) {
@@ -103,7 +111,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     if (inFlight.current || !project || !files.length) return
     setExportSnapshot({
       title: project.project.name,
-      files: files.map(({ path, content }) => ({ path, content })),
+      files: files.map(({ path, content, kind, storage_path }) => ({ path, content, kind, storage_path })),
       draft: dirty && selected ? { path: selected.path, content: draft } : null,
       pdf: output?.pdf ?? null,
       olderPdf: stale || !!compileError || compiling,
@@ -116,10 +124,11 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     void (async () => {
       try {
         const data = await loadProject(projectId, controller.signal)
-        const sources = data ? await loadPaper(projectId, controller.signal) : []
+        const loaded = data ? await loadPaperState(projectId, controller.signal) : { files: [], settings: null }
+        const sources = loaded.files
         if (controller.signal.aborted) return
-        setProject(data); setFiles(sources)
-        const first = sources.find((file) => file.path === 'main.tex') ?? sources[0] ?? null
+        setProject(data); setFiles(sources); setSettings(loaded.settings)
+        const first = sources.find((file) => file.path === loaded.settings?.main_file) ?? sources.find((file) => file.kind === 'text') ?? null
         setSelected(first); setDraft(first?.content ?? ''); setLoading(false)
       } catch (cause) {
         if (!controller.signal.aborted) { setError(message(cause)); setLoading(false) }
@@ -162,9 +171,10 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     void perform(async () => {
       const data = await loadProject(projectId, new AbortController().signal)
       if (!data) throw new Error('Project unavailable. Your current edits have been kept.')
-      const sources = await loadPaper(projectId)
+      const loaded = await loadPaperState(projectId)
+      const sources = loaded.files
       const current = sources.find((file) => file.id === selected?.id) ?? sources[0] ?? null
-      setProject(data); setFiles(sources); setSelected(current); setDraft(current?.content ?? ''); setStatus('Latest source loaded.')
+      setProject(data); setFiles(sources); setSettings(loaded.settings); setSelected(current); setDraft(current?.content ?? ''); setStatus('Latest source loaded.')
     })
   }
   return <div className="paper-workbench">
@@ -179,6 +189,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       {!editable && <p className="paper-readonly">{project.project.status === 'archived' ? 'Archived project' : 'Viewer access'} &middot; You can read the source and compile a preview. Editing is disabled.</p>}
       {!files.length ? <section className="paper-welcome"><div className="paper-document-icon">T<span>E</span>X</div><p className="eyebrow">A SPACE FOR YOUR NEXT IDEA</p><h2>Every paper starts with a blank page.</h2><p>Create your LaTeX source, bring your research together,<br />and see it take shape alongside a PDF preview.</p>{editable ? <button className="button primary compact-button" disabled={busy} onClick={() => void perform(async () => {
         const sources = await initializePaper(projectId); setFiles(sources)
+        setSettings(await loadPaperSettings(projectId))
         const first = sources.find((file) => file.path === 'main.tex') ?? sources[0]
         setSelected(first); setDraft(first.content)
       })}>{busy ? 'Creating...' : 'Create your paper'}</button> : <p>An owner or member can initialize this paper.</p>}</section> : <>
@@ -191,17 +202,18 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
         <div className={`paper-layout${sidebar ? ' files-open' : ''}`}>
           <aside id="paper-file-sidebar" className="paper-files" aria-label="Paper source files" hidden={!sidebar}>
             <div className="sidebar-heading"><h2>EXPLORER</h2><span>{files.length} files</span></div>
+            {editable && <button className="tool-button manage-files-button" disabled={busy || dirty || compiling} title={dirty ? 'Save or discard source edits before managing files.' : 'Import, upload, rename, move, or delete files'} onClick={() => void perform(async () => { const loaded = await loadPaperState(projectId); setFiles(loaded.files); setSettings(loaded.settings); setManager(true) })}>Manage files / Import</button>}
             <FileTree files={files} selected={selected?.id} choose={(file) => { choose(file); if (window.matchMedia('(max-width: 900px)').matches && !dirty && !busy) setSidebar(false) }} />
             {editable && <details className="add-source"><summary>+ Add source file</summary><form onSubmit={(event) => {
               event.preventDefault()
               void perform(async () => { const file = await createPaperFile(projectId, path.trim()); setFiles((items) => [...items, file].sort((a, b) => a.path.localeCompare(b.path))); setPath(''); setStatus(`Created ${file.path}.`) })
             }}><label>File path<input value={path} onChange={(event) => setPath(event.target.value)} placeholder="sections/methods.tex" required maxLength={240} disabled={busy} /></label><button className="button secondary" disabled={busy}>Create file</button><p className="muted">Use / for folders. .tex, .bib, .sty, .cls and .txt supported.</p></form></details>}
-            <div className="sidebar-footer"><span className="file-language">TEX</span><div><strong>main.tex</strong><p>Compilation entry point</p></div></div>
+            <div className="sidebar-footer"><span className="file-language">TEX</span><div><strong>{mainFile}</strong><p>Compilation entry point</p></div></div>
           </aside>
           <div className="paper-panels" ref={panels} data-view={viewMode} style={{ '--editor-share': `${split}%` } as CSSProperties}>
             <section className="paper-source" aria-label="Source editor">
               <div className="paper-toolbar"><span className="file-language">{selected?.path.endsWith('.bib') ? 'BIB' : 'TEX'}</span><strong>{selected?.path}</strong><span className={`save-indicator${dirty ? ' unsaved' : ''}`} title={status} role="status">{busy ? 'Saving...' : dirty ? 'Unsaved' : 'Saved'}</span><button className="tool-button" disabled={busy} onClick={reload} title="Reload source from the database" aria-label="Reload source"><Icon name="reload" /></button>{editable && <button className="tool-button save-button" disabled={busy || !dirty} onClick={save}>Save</button>}</div>
-              {selected && <SourceEditor key={selected.id} value={draft} onChange={setDraft} readOnly={!editable || busy} onSave={save} />}
+              {selected?.kind === 'image' ? <Suspense fallback={<p>Loading figure...</p>}><FigurePreview key={selected.storage_path} file={selected} /></Suspense> : selected && <SourceEditor key={selected.id} value={draft} onChange={setDraft} readOnly={!editable || busy} onSave={save} />}
               <div className="editor-footer"><span>{draft.split('\n').length} lines <span className="footer-dot">&middot;</span> UTF-8</span><span>Ctrl/Cmd + S to save</span></div>
             </section>
             <div className="panel-resizer" role="separator" tabIndex={0} aria-label="Resize source and preview" aria-orientation="vertical" aria-valuemin={25} aria-valuemax={75} aria-valuenow={split}
@@ -223,6 +235,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     </>}
     {blocker.state === 'blocked' && <LeaveDialog busy={busy} stay={() => blocker.reset()} leave={() => blocker.proceed()} />}
     {exportSnapshot && <Suspense fallback={<p role="status" className="export-loading">Opening export...</p>}><ExportDialog snapshot={exportSnapshot} close={() => setExportSnapshot(null)} /></Suspense>}
+    {manager && settings && <Suspense fallback={<p role="status" className="export-loading">Opening file manager...</p>}><FileManager projectId={projectId} files={files} settings={settings} close={() => setManager(false)} onBusy={(value) => { inFlight.current = value; setBusy(value) }} applied={() => { setManager(false); setLoading(true); setAttempt((value) => value + 1) }} /></Suspense>}
   </div>
 }
 

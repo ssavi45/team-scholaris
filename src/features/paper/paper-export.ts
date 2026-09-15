@@ -9,16 +9,18 @@ export function downloadName(title: string, kind: 'pdf' | 'source', olderPdf = f
 
 export function exportSources(files: SourceFile[], draft: SourceFile | null, includeDraft: boolean): SourceFile[] {
   if (includeDraft && draft && !files.some((file) => file.path === draft.path)) throw new Error('The draft does not match a source file.')
-  const snapshot = files.map((file) => ({ path: file.path, content: includeDraft && draft?.path === file.path ? draft.content : file.content }))
-  validateSources(snapshot)
+  const snapshot = files.map((file) => ({ path: file.path, content: includeDraft && draft?.path === file.path ? draft.content : file.content,
+    ...(file.kind ? { kind: file.kind, storage_path: file.storage_path, bytes: file.bytes } : {}) }))
+  // Figure bytes are loaded by the export dialog before building the archive.
+  validateSources(snapshot.filter((file) => file.kind !== 'image'), null)
   return snapshot
 }
 
 export async function sourceArchive(files: SourceFile[], signal: AbortSignal): Promise<Uint8Array<ArrayBuffer>> {
-  validateSources(files)
+  validateSources(files, null)
   signal.throwIfAborted()
   const entries: AsyncZippable = Object.create(null)
-  for (const file of files) entries[file.path] = strToU8(file.content)
+  for (const file of files) entries[file.kind === 'folder' ? file.path + '/' : file.path] = file.bytes ?? strToU8(file.content)
   return new Promise((resolve, reject) => {
     let terminate: (() => void) | undefined
     const abort = () => { terminate?.(); reject(new DOMException('Export cancelled.', 'AbortError')) }

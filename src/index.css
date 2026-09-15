@@ -163,6 +163,27 @@ select { border: 1px solid #dedede; border-radius: 6px; padding: 10px; min-heigh
 .export-checkbox input { width: 15px; height: 15px; min-height: 0; flex-shrink: 0; margin-top: 3px; accent-color: #35684c; }
 .export-option .export-hint { color: #92753b; font-size: 11px; }
 .export-status { color: #56734b; font-size: 12px; line-height: 1.6; }
+.file-manager { width: min(860px, calc(100% - 32px)); }
+.manager-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.manager-grid h3, .import-review h3 { font-size: 14px; font-weight: 600; color: #3d513c; }
+.manager-tree { margin: 12px 0; }
+.manager-tree select { width: 100%; padding: 8px; font: 12px/1.8 Consolas, monospace; min-height: 230px; background: #f8faf6; }
+.manager-tree option { padding: 6px; }
+.manager-actions { display: flex; gap: 8px; margin-top: 12px; }
+.manager-actions .button, .manager-tools .button { font-size: 12px; }
+.manager-tools { display: grid; gap: 16px; align-content: start; }
+.manager-tools form { border-block: 1px solid #e4e9df; padding-block: 16px; gap: 8px; }
+.manager-upload input { font-size: 11px; padding: 8px; }
+.import-review { margin: 20px 0; padding: 16px; border: 1px solid #dce5d5; border-radius: 8px; background: #f8faf6; }
+.import-review ul { max-height: 130px; overflow: auto; font: 12px/1.8 Consolas, monospace; margin-block: 12px; overflow-wrap: anywhere; }
+.import-review .export-checkbox { display: flex; align-items: center; gap: 8px; margin-block: 12px; }
+.import-review details { font-size: 11px; overflow-wrap: anywhere; }
+.manage-files-button { border: 1px solid #dce5d5; margin: 4px 4px 12px; font-size: 10px; }
+.figure-preview { flex: 1; min-height: 0; overflow: auto; padding: 24px; background: #f6f8f2; }
+.figure-preview img { max-width: 100%; height: auto; object-fit: contain; }
+.figure-preview p { margin-top: 20px; font-size: 12px; overflow-wrap: anywhere; }
+.sidebar-footer strong { overflow-wrap: anywhere; }
+@media (max-width: 650px) { .manager-grid { grid-template-columns: 1fr; } }
 .export-loading { position: fixed; right: 24px; bottom: 40px; padding: 12px 18px; background: #fff; border: 1px solid #dce5d5; border-radius: 8px; box-shadow: 0 4px 20px #263c3010; font-size: 12px; }
 @media (max-width: 540px) {
   .workbench-toolbar { flex-wrap: wrap; }

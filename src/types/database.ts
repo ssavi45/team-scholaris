@@ -13,24 +13,33 @@ export type Database = {
         Row: {
           content: string
           id: string
+          kind: string
           path: string
           project_id: string
+          size_bytes: number
+          storage_path: string | null
           updated_at: string
           version: number
         }
         Insert: {
           content?: string
           id?: string
+          kind?: string
           path: string
           project_id: string
+          size_bytes?: number
+          storage_path?: string | null
           updated_at?: string
           version?: number
         }
         Update: {
           content?: string
           id?: string
+          kind?: string
           path?: string
           project_id?: string
+          size_bytes?: number
+          storage_path?: string | null
           updated_at?: string
           version?: number
         }
@@ -47,15 +56,21 @@ export type Database = {
       paper_workspaces: {
         Row: {
           created_at: string
+          main_file: string
           project_id: string
+          revision: number
         }
         Insert: {
           created_at?: string
+          main_file?: string
           project_id: string
+          revision?: number
         }
         Update: {
           created_at?: string
+          main_file?: string
           project_id?: string
+          revision?: number
         }
         Relationships: [
           {
@@ -247,14 +262,26 @@ export type Database = {
         Args: { p_invitation_id?: string; p_token?: string }
         Returns: string
       }
+      apply_paper_manifest: {
+        Args: {
+          p_entries: Json
+          p_main_file: string
+          p_project_id: string
+          p_revision: number
+        }
+        Returns: undefined
+      }
       can_access_project: { Args: { project_id: string }; Returns: boolean }
       create_paper_file: {
         Args: { p_path: string; p_project_id: string }
         Returns: {
           content: string
           id: string
+          kind: string
           path: string
           project_id: string
+          size_bytes: number
+          storage_path: string | null
           updated_at: string
           version: number
         }[]
@@ -319,6 +346,10 @@ export type Database = {
         }[]
       }
       max_owned_projects: { Args: never; Returns: number }
+      paper_storage_allowed: {
+        Args: { p_name: string; p_write: boolean }
+        Returns: boolean
+      }
       require_paper_editor: {
         Args: { p_project_id: string }
         Returns: undefined
@@ -336,8 +367,11 @@ export type Database = {
         Returns: {
           content: string
           id: string
+          kind: string
           path: string
           project_id: string
+          size_bytes: number
+          storage_path: string | null
           updated_at: string
           version: number
         }[]

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SourceFile } from './compiler'
 import { downloadName, exportSources, pdfDownload, requestDownload, sourceArchive } from './paper-export'
+import { hydrateFigures } from './paper-api'
 
 export type ExportSnapshot = {
   title: string
@@ -31,7 +32,8 @@ export default function ExportDialog({ snapshot, close }: { snapshot: ExportSnap
     job.current = controller; setBusy(true); setError(''); setStatus('Preparing source ZIP...')
     try {
       const files = exportSources(snapshot.files, snapshot.draft, includeDraft)
-      const bytes = await sourceArchive(files, controller.signal)
+      const hydrated = await hydrateFigures(files, controller.signal)
+      const bytes = await sourceArchive(hydrated, controller.signal)
       if (controller.signal.aborted) return
       requestDownload(new Blob([bytes], { type: 'application/zip' }), downloadName(snapshot.title, 'source'))
       setStatus('Source ZIP download requested. Check your browser downloads.')
