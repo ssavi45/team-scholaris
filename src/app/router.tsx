@@ -24,6 +24,7 @@ export const router = createBrowserRouter([{
           { path: '/app', element: <DashboardPage /> },
           { path: '/project/:projectId', element: <ProjectPage /> },
           { path: '/project/:projectId/paper', lazy: async () => ({ Component: (await import('../features/paper/PaperPage')).PaperPage }) },
+          { path: '/project/:projectId/files', lazy: async () => ({ Component: (await import('../features/files/FilesPage')).FilesPage }) },
         ],
       }],
     },

@@ -13,6 +13,9 @@ PAPER-02 adds browser-side LaTeX compilation, PDF preview, and a full-width edit
 See [compilation and preview](docs/paper-02.md) for usage, requirements, and tests.
 PAPER-03 adds PDF and source ZIP downloads through the paper toolbar's **Export** action.
 See [paper exports](docs/paper-03.md) for snapshot and unsaved-draft behavior.
+PAPER-04 adds paper file tree management, figure uploads, and ZIP import. See [PAPER-04](docs/paper-04.md).
+FILES-01 adds a general research files repository with 50 MB file and 500 MB project quotas.
+See [project files repository](docs/files-01.md).
 
 With Docker Desktop running, run `npx --no-install supabase start`, then
 `npm run dev`. Open http://127.0.0.1:5173. Local verification/reset emails

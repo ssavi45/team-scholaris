@@ -23,13 +23,13 @@ function ProjectOverview({ id }: { id: string }) {
     return () => controller.abort()
   }, [id, user?.id, attempt])
   const mine = state.data?.members.find((member) => member.user_id === user?.id)
-  return <>
-    <Link to="/app">Back to dashboard</Link>
+  return <div className="project-page-container">
+    <Link to="/app" className="back-link">&larr; Back to dashboard</Link>
     {state.loading ? <p className="empty-state" role="status">Loading project...</p> : state.error ? <div className="empty-state" role="alert"><p>{state.error}</p><button className="button secondary compact-button" onClick={() => { setState({ data: null, loading: true, error: '' }); setAttempt(attempt + 1) }}>Try again</button></div> : !state.data ?
       <div className="empty-state"><h1>Project unavailable</h1><p>This project does not exist or you do not have access to it.</p></div> : <>
       <div className="page-heading project-title"><div><p className="eyebrow">Project overview</p><h1>{state.data.project.name}</h1></div><span className="status-badge">{state.data.project.status}</span></div>
       {state.data.project.status === 'archived' && <p className="notice">This project is archived and read-only.</p>}
-      <nav className="project-tabs" aria-label="Project"><span aria-current="page">Overview</span><Link to={`/project/${id}/paper`}>Paper workspace</Link></nav>
+      <nav className="project-tabs" aria-label="Project"><span aria-current="page">Overview</span><Link to={`/project/${id}/paper`}>Paper workspace</Link><Link to={`/project/${id}/files`}>Files</Link></nav>
       <section className="overview-panel"><h2>About this research</h2><p className="project-about">{state.data.project.description || 'No description has been added.'}</p></section>
       <dl className="project-facts">
         <div><dt>Your access</dt><dd>{mine?.access_level ?? 'Unavailable'}</dd></div>
@@ -40,5 +40,5 @@ function ProjectOverview({ id }: { id: string }) {
       {mine?.display_role && <p className="muted">Your display role: {mine.display_role}</p>}
       <ProjectTeam projectId={id} isOwner={mine?.access_level === 'owner'} isActive={state.data.project.status === 'active'} onRefresh={() => { setState({ data: null, loading: true, error: '' }); setAttempt((value) => value + 1) }} />
     </>}
-  </>
+  </div>
 }

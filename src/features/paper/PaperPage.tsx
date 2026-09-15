@@ -182,6 +182,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       <Link className="project-back" to={`/project/${projectId}`} aria-label="Back to project">&larr;</Link>
       <div className="paper-project-name"><p className="eyebrow">PROJECT / PAPER</p><h1>{project?.project.name ?? 'Paper workspace'}</h1></div>
       <span className="paper-access"><span className="access-dot" />{editable ? 'Can edit' : 'Read-only'}</span>
+      <Link className="project-overview-link" to={`/project/${projectId}/files`}>Project files &#8599;</Link>
       <Link className="project-overview-link" to={`/project/${projectId}`}>Project overview &#8599;</Link>
     </header>
     {error && <div role="alert" className="notice error-notice paper-notice">{error}</div>}

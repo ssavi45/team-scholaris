@@ -25,7 +25,7 @@ export function DashboardPage() {
   const owned = state.projects.filter((project) => project.owner_id === user?.id)
   const joined = state.projects.filter((project) => project.owner_id !== user?.id)
   const atLimit = owned.length >= MAX_OWNED_PROJECTS
-  return <>
+  return <div className="dashboard-container">
     <PendingInvitations />
     <div className="page-heading"><div><p className="eyebrow">Workspace</p><h1>My projects</h1><p className="muted">Your research, together in one place.</p></div>
       <button className="button primary compact-button" disabled={state.loading || !!state.error || atLimit} onClick={() => setCreating(true)}>New project</button>
@@ -41,7 +41,7 @@ export function DashboardPage() {
       </section>
     </>}
     {creating && <CreateProjectDialog onClose={() => setCreating(false)} onCreated={(id) => navigate('/project/' + id)} />}
-  </>
+  </div>
 }
 
 function ProjectList({ projects, empty }: { projects: Project[]; empty: string }) {

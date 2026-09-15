@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       paper_files: {
@@ -105,6 +130,57 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      project_files: {
+        Row: {
+          created_at: string
+          id: string
+          mime_type: string
+          name: string
+          project_id: string
+          size_bytes: number
+          storage_path: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mime_type?: string
+          name: string
+          project_id: string
+          size_bytes: number
+          storage_path: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime_type?: string
+          name?: string
+          project_id?: string
+          size_bytes?: number
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_files_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_invitations: {
         Row: {
@@ -321,6 +397,21 @@ export type Database = {
           recipient_email: string
         }[]
       }
+      get_project_files: {
+        Args: { p_project_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          mime_type: string
+          name: string
+          project_id: string
+          size_bytes: number
+          storage_path: string
+          updated_at: string
+          uploaded_by: string
+          uploader_name: string
+        }[]
+      }
       get_project_team: {
         Args: { p_project_id: string }
         Returns: {
@@ -347,6 +438,10 @@ export type Database = {
       }
       max_owned_projects: { Args: never; Returns: number }
       paper_storage_allowed: {
+        Args: { p_name: string; p_write: boolean }
+        Returns: boolean
+      }
+      project_file_storage_allowed: {
         Args: { p_name: string; p_write: boolean }
         Returns: boolean
       }
@@ -511,6 +606,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
