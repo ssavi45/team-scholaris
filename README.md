@@ -20,8 +20,10 @@ CHAT-01 adds real-time project chat channels and a bespoke scholarly design syst
 See [project chat](docs/chat-01.md).
 TEAM-01 adds a dedicated Team tab, invitations, access and research-role editing,
 member removal, and self-leave. See [team management](docs/team-01.md).
+OVERVIEW-02 brings real counts, workspace shortcuts, access details, and recent
+activity into the project Overview. See [project overview](docs/overview-02.md).
 See the [September review and test notes](docs/review-2026-09-19.md) and
-[next build plan: Overview, Meetings, and Settings](docs/next-build.md).
+[next build plan: Meetings and Settings](docs/next-build.md).
 
 With Docker Desktop running, run `npx --no-install supabase start`, then
 `npm run dev`. Open http://127.0.0.1:5173. Local verification/reset emails
