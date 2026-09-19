@@ -1,5 +1,16 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
+import {
+  UploadCloud,
+  FolderArchive,
+  Search,
+  X,
+  Download,
+  Edit3,
+  Trash2,
+  ArrowLeft,
+} from 'lucide-react'
+import { ProjectTabShell } from '../../components/layout/ProjectTabShell'
 import { useAuth } from '../auth/auth-context'
 import { loadProject } from '../projects/projects-api'
 import {
@@ -17,7 +28,8 @@ import {
 
 export function FilesPage() {
   const { projectId = '' } = useParams()
-  return <FilesWorkspace key={projectId} projectId={projectId} />
+  const { user } = useAuth()
+  return <FilesWorkspace key={`${projectId}:${user?.id}`} projectId={projectId} />
 }
 
 function FilesWorkspace({ projectId }: { projectId: string }) {
@@ -37,6 +49,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
   const [uploadError, setUploadError] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadInFlight = useRef(false)
 
   // Rename modal state
   const [renameTarget, setRenameTarget] = useState<ProjectFile | null>(null)
@@ -103,10 +116,11 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
   }, [files, search, category, sortBy])
 
   async function processFiles(fileList: FileList | File[]) {
-    if (!canWrite) return
+    if (!canWrite || uploadInFlight.current || renameTarget || deleteTarget) return
     const incoming = Array.from(fileList)
     if (incoming.length === 0) return
 
+    uploadInFlight.current = true
     setUploading(true)
     setUploadError('')
     setUploadStatus(`Preparing ${incoming.length} file(s)...`)
@@ -120,12 +134,13 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
       try {
         const uploaded = await uploadProjectFile(projectId, file, currentFiles)
         currentFiles.unshift(uploaded)
-        setFiles([...currentFiles])
+        setFiles((previous) => [uploaded, ...previous])
       } catch (err) {
         errors.push(`${file.name}: ${err instanceof Error ? err.message : 'Upload failed'}`)
       }
     }
 
+    uploadInFlight.current = false
     setUploading(false)
     setUploadStatus('')
     if (errors.length > 0) {
@@ -170,6 +185,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
   }
 
   function openRename(file: ProjectFile) {
+    if (uploadInFlight.current) return
     setRenameTarget(file)
     setRenameValue(file.name)
     setRenameError('')
@@ -200,6 +216,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
   }
 
   function openDelete(file: ProjectFile) {
+    if (uploadInFlight.current) return
     setDeleteTarget(file)
     setDeleteError('')
   }
@@ -209,9 +226,10 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
     setDeleteSubmitting(true)
     setDeleteError('')
     try {
-      await deleteProjectFile(deleteTarget.id, deleteTarget.storage_path)
+      const warning = await deleteProjectFile(deleteTarget.id, deleteTarget.storage_path)
       setFiles((prev) => prev.filter((f) => f.id !== deleteTarget.id))
       setDeleteTarget(null)
+      if (warning) setUploadError(warning)
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete file.')
     } finally {
@@ -219,41 +237,59 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
     }
   }
 
-  return (
-    <div className="files-page-container">
-      <Link to="/app" className="back-link">← Back to dashboard</Link>
-
-      {loading ? (
+  if (loading) {
+    return (
+      <div className="project-tab-container">
+        <Link to="/app" className="back-link">
+          <ArrowLeft size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          Back to dashboard
+        </Link>
         <p className="empty-state" role="status">Loading files repository...</p>
-      ) : error ? (
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="project-tab-container">
+        <Link to="/app" className="back-link">
+          <ArrowLeft size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          Back to dashboard
+        </Link>
         <div className="empty-state" role="alert">
           <p>{error}</p>
           <button className="button secondary compact-button" onClick={() => { setLoading(true); setError(''); setAttempt((a) => a + 1) }}>
             Retry
           </button>
         </div>
-      ) : !projectData ? (
+      </div>
+    )
+  }
+
+  if (!projectData) {
+    return (
+      <div className="project-tab-container">
+        <Link to="/app" className="back-link">
+          <ArrowLeft size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          Back to dashboard
+        </Link>
         <div className="empty-state">
           <h1>Project unavailable</h1>
           <p>This project does not exist or you do not have access to it.</p>
         </div>
-      ) : (
-        <>
-          <div className="page-heading project-title">
-            <div>
-              <p className="eyebrow">Project repository</p>
-              <h1>{projectData.project.name}</h1>
-            </div>
-            <span className="status-badge">{projectData.project.status}</span>
-          </div>
+      </div>
+    )
+  }
 
-          {isArchived && <p className="notice">This project is archived and read-only.</p>}
-
-          <nav className="project-tabs" aria-label="Project">
-            <Link to={`/project/${projectId}`}>Overview</Link>
-            <Link to={`/project/${projectId}/paper`}>Paper workspace</Link>
-            <span aria-current="page">Files</span>
-          </nav>
+  return (
+    <ProjectTabShell
+      projectId={projectId}
+      projectName={projectData.project.name}
+      projectStatus={projectData.project.status}
+      activeTab="files"
+      categoryLabel="PROJECT FILES"
+      isArchived={isArchived}
+    >
 
           {/* Storage Quota Header */}
           <section className="storage-meter-section" aria-label="Storage quota">
@@ -301,7 +337,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
                 disabled={uploading}
               />
               <div className="drop-zone-content">
-                <span className="upload-icon" aria-hidden="true">📁</span>
+                <UploadCloud size={32} style={{ color: '#2d6549', marginBottom: 4 }} />
                 {uploading ? (
                   <div>
                     <p className="upload-primary">{uploadStatus}</p>
@@ -329,16 +365,18 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
 
           {uploadError && (
             <div className="error-banner" role="alert">
-              <strong>Upload warning:</strong> {uploadError}
+              <strong>File operation warning:</strong> {uploadError}
             </div>
           )}
 
           {/* Controls Bar: Search, Category Filter, Sort */}
           <div className="files-controls-bar">
             <div className="files-search-wrap">
+              <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#7a8e75', pointerEvents: 'none' }} />
               <input
                 type="search"
                 className="files-search-input"
+                style={{ paddingLeft: 30 }}
                 placeholder="Search files by name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -346,7 +384,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
               />
               {search && (
                 <button className="clear-search-btn" onClick={() => setSearch('')} aria-label="Clear search">
-                  ✕
+                  <X size={13} />
                 </button>
               )}
             </div>
@@ -365,6 +403,8 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
                 <option value="archive">Archives & ZIPs</option>
                 <option value="image">Images & Figures</option>
                 <option value="document">Documents & Text</option>
+                <option value="data">Scientific Data</option>
+                <option value="media">Audio & Video</option>
                 <option value="other">Other files</option>
               </select>
 
@@ -385,7 +425,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
           {/* File List Table */}
           {files.length === 0 ? (
             <div className="empty-files-state">
-              <p className="empty-icon">🗂️</p>
+              <FolderArchive size={40} style={{ color: '#3d614b', margin: '0 auto 10px' }} />
               <h3>No research files uploaded yet</h3>
               <p className="muted">
                 Keep datasets, code archives, reference PDFs, and experiment outputs in one place for co-authors.
@@ -475,7 +515,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
                               onClick={() => void handleDownload(file)}
                               title="Download file"
                             >
-                              Download
+                              <Download size={12} /> Download
                             </button>
                             {canEditThisFile && (
                               <>
@@ -483,15 +523,17 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
                                   className="button secondary compact-button"
                                   onClick={() => openRename(file)}
                                   title="Rename file"
+                                  disabled={uploading}
                                 >
-                                  Rename
+                                  <Edit3 size={12} /> Rename
                                 </button>
                                 <button
                                   className="button danger compact-button"
                                   onClick={() => openDelete(file)}
                                   title="Delete file"
+                                  disabled={uploading}
                                 >
-                                  Delete
+                                  <Trash2 size={12} /> Delete
                                 </button>
                               </>
                             )}
@@ -507,8 +549,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
 
           {/* Rename Modal */}
           {renameTarget && (
-            <div className="modal-backdrop" role="dialog" aria-labelledby="rename-title" aria-modal="true">
-              <div className="modal-card">
+            <FileDialog titleId="rename-title" busy={renameSubmitting} close={() => setRenameTarget(null)}>
                 <h3 id="rename-title">Rename File</h3>
                 <form onSubmit={(e) => void handleRenameSubmit(e)}>
                   <div className="form-field">
@@ -538,14 +579,12 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
                     </button>
                   </div>
                 </form>
-              </div>
-            </div>
+            </FileDialog>
           )}
 
           {/* Delete Modal */}
           {deleteTarget && (
-            <div className="modal-backdrop" role="dialog" aria-labelledby="delete-title" aria-modal="true">
-              <div className="modal-card">
+            <FileDialog titleId="delete-title" busy={deleteSubmitting} close={() => setDeleteTarget(null)}>
                 <h3 id="delete-title">Delete File</h3>
                 <p>
                   Are you sure you want to permanently delete <strong>{deleteTarget.name}</strong>?
@@ -570,11 +609,18 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
                     {deleteSubmitting ? 'Deleting...' : 'Delete Permanently'}
                   </button>
                 </div>
-              </div>
-            </div>
+            </FileDialog>
           )}
-        </>
-      )}
-    </div>
+    </ProjectTabShell>
   )
+}
+
+function FileDialog({ titleId, busy, close, children }: { titleId: string; busy: boolean; close: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const dialog = ref.current!
+    dialog.showModal()
+    return () => dialog.close()
+  }, [])
+  return <dialog ref={ref} className="project-dialog modal-card" aria-labelledby={titleId} onCancel={(event) => { event.preventDefault(); if (!busy) close() }}>{children}</dialog>
 }

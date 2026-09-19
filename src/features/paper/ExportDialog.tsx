@@ -62,7 +62,7 @@ export default function ExportDialog({ snapshot, close }: { snapshot: ExportSnap
       </>}
       <button className="button secondary compact-button" disabled={!snapshot.pdf || busy || (snapshot.olderPdf && !acceptOlder)} onClick={downloadPdf}>{snapshot.olderPdf ? 'Download last compiled PDF' : 'Download PDF'}</button>
     </div></section>
-    <section className="export-option" aria-labelledby="export-source-title"><span className="export-format">ZIP</span><div><h3 id="export-source-title">LaTeX source</h3><p>{snapshot.files.length} source files, including main.tex and bibliography files, with folder paths preserved. Uses the files loaded in this workspace when you opened Export.</p>
+    <section className="export-option" aria-labelledby="export-source-title"><span className="export-format">ZIP</span><div><h3 id="export-source-title">LaTeX source</h3><p>{snapshot.files.length} entries, including sources, bibliography files, and figures, with folder paths preserved. Uses the files loaded in this workspace when you opened Export.</p>
       {snapshot.draft && <label className="export-checkbox"><input type="checkbox" checked={includeDraft} disabled={busy} onChange={(event) => setIncludeDraft(event.target.checked)} />Include unsaved edits to {snapshot.draft.path}</label>}
       {snapshot.draft && <p className="export-hint">{includeDraft ? 'Your draft will be included in this copy. It remains unsaved in the project.' : 'The ZIP will use the last loaded saved version of this file.'}</p>}
       <button className="button primary compact-button" disabled={busy} onClick={() => void downloadZip()}>{busy ? 'Preparing ZIP...' : 'Download source ZIP'}</button>

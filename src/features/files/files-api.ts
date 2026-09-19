@@ -165,18 +165,27 @@ export async function renameProjectFile(
     throw new Error(`A file named "${trimmed}" already exists in this project.`)
   }
 
-  const { error } = await client()
+  const { data, error } = await client()
     .from('project_files')
     .update({ name: trimmed, updated_at: new Date().toISOString() })
     .eq('id', fileId)
+    .select('id')
+    .single()
 
   if (error) throw new Error(error.message)
+  if (!data) throw new Error('File was not renamed. Refresh and check your access.')
 }
 
-export async function deleteProjectFile(fileId: string, storagePath: string): Promise<void> {
-  const { error: dbError } = await client().from('project_files').delete().eq('id', fileId)
+export async function deleteProjectFile(fileId: string, storagePath: string): Promise<string | null> {
+  const { data, error: dbError } = await client().from('project_files').delete().eq('id', fileId).select('storage_path').single()
   if (dbError) throw new Error(dbError.message)
+  if (!data || data.storage_path !== storagePath) throw new Error('File changed. Refresh before deleting it.')
 
-  await client().storage.from('project-files').remove([storagePath]).catch(() => {})
+  try {
+    const result = await client().storage.from('project-files').remove([storagePath])
+    if (result.error || !result.data?.length) return 'The file was removed from the list, but storage cleanup could not be confirmed.'
+  } catch {
+    return 'The file was removed from the list, but storage cleanup could not be confirmed.'
+  }
+  return null
 }
-

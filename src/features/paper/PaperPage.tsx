@@ -85,7 +85,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       const snapshot = loaded.files
       if (controller.signal.aborted) return
       setProject(data); setFiles(snapshot); setSettings(loaded.settings)
-      const current = snapshot.find((file) => file.id === selected?.id) ?? snapshot[0] ?? null
+      const current = snapshot.find((file) => file.id === selected?.id && file.kind !== 'folder') ?? snapshot.find((file) => file.path === loaded.settings?.main_file) ?? snapshot.find((file) => file.kind === 'text') ?? null
       setSelected(current); setDraft(current?.content ?? '')
       inFlight.current = false; setBusy(false); preparing = false
       setCompileStatus('Loading paper figures...')
@@ -173,7 +173,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       if (!data) throw new Error('Project unavailable. Your current edits have been kept.')
       const loaded = await loadPaperState(projectId)
       const sources = loaded.files
-      const current = sources.find((file) => file.id === selected?.id) ?? sources[0] ?? null
+      const current = sources.find((file) => file.id === selected?.id && file.kind !== 'folder') ?? sources.find((file) => file.path === loaded.settings?.main_file) ?? sources.find((file) => file.kind === 'text') ?? null
       setProject(data); setFiles(sources); setSettings(loaded.settings); setSelected(current); setDraft(current?.content ?? ''); setStatus('Latest source loaded.')
     })
   }
@@ -183,6 +183,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       <div className="paper-project-name"><p className="eyebrow">PROJECT / PAPER</p><h1>{project?.project.name ?? 'Paper workspace'}</h1></div>
       <span className="paper-access"><span className="access-dot" />{editable ? 'Can edit' : 'Read-only'}</span>
       <Link className="project-overview-link" to={`/project/${projectId}/files`}>Project files &#8599;</Link>
+      <Link className="project-overview-link" to={`/project/${projectId}/chat`}>Project chat &#8599;</Link>
       <Link className="project-overview-link" to={`/project/${projectId}`}>Project overview &#8599;</Link>
     </header>
     {error && <div role="alert" className="notice error-notice paper-notice">{error}</div>}
@@ -203,7 +204,11 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
         <div className={`paper-layout${sidebar ? ' files-open' : ''}`}>
           <aside id="paper-file-sidebar" className="paper-files" aria-label="Paper source files" hidden={!sidebar}>
             <div className="sidebar-heading"><h2>EXPLORER</h2><span>{files.length} files</span></div>
-            {editable && <button className="tool-button manage-files-button" disabled={busy || dirty || compiling} title={dirty ? 'Save or discard source edits before managing files.' : 'Import, upload, rename, move, or delete files'} onClick={() => void perform(async () => { const loaded = await loadPaperState(projectId); setFiles(loaded.files); setSettings(loaded.settings); setManager(true) })}>Manage files / Import</button>}
+            {editable && <button className="tool-button manage-files-button" disabled={busy || dirty || compiling} title={dirty ? 'Save or discard source edits before managing files.' : 'Import, upload, rename, move, or delete files'} onClick={() => void perform(async () => {
+              const loaded = await loadPaperState(projectId)
+              const current = loaded.files.find((file) => file.id === selected?.id && file.kind !== 'folder') ?? loaded.files.find((file) => file.path === loaded.settings?.main_file) ?? null
+              setFiles(loaded.files); setSettings(loaded.settings); setSelected(current); setDraft(current?.content ?? ''); setManager(true)
+            })}>Manage files / Import</button>}
             <FileTree files={files} selected={selected?.id} choose={(file) => { choose(file); if (window.matchMedia('(max-width: 900px)').matches && !dirty && !busy) setSidebar(false) }} />
             {editable && <details className="add-source"><summary>+ Add source file</summary><form onSubmit={(event) => {
               event.preventDefault()
@@ -236,7 +241,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     </>}
     {blocker.state === 'blocked' && <LeaveDialog busy={busy} stay={() => blocker.reset()} leave={() => blocker.proceed()} />}
     {exportSnapshot && <Suspense fallback={<p role="status" className="export-loading">Opening export...</p>}><ExportDialog snapshot={exportSnapshot} close={() => setExportSnapshot(null)} /></Suspense>}
-    {manager && settings && <Suspense fallback={<p role="status" className="export-loading">Opening file manager...</p>}><FileManager projectId={projectId} files={files} settings={settings} close={() => setManager(false)} onBusy={(value) => { inFlight.current = value; setBusy(value) }} applied={() => { setManager(false); setLoading(true); setAttempt((value) => value + 1) }} /></Suspense>}
+    {manager && settings && <Suspense fallback={<p role="status" className="export-loading">Opening file manager...</p>}><FileManager projectId={projectId} files={files} settings={settings} close={() => setManager(false)} onBusy={(value) => { inFlight.current = value; setBusy(value) }} applied={(warning) => { setError(warning ?? ''); setManager(false); setLoading(true); setAttempt((value) => value + 1) }} /></Suspense>}
   </div>
 }
 

@@ -5,7 +5,7 @@ import type { ZipImport } from './zip-import'
 
 export default function FileManager({ projectId, files, settings, close, applied, onBusy }: {
   projectId: string; files: PaperFile[]; settings: { revision: number; main_file: string }
-  close: () => void; applied: () => void; onBusy: (busy: boolean) => void
+  close: () => void; applied: (warning?: string) => void; onBusy: (busy: boolean) => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [entries, setEntries] = useState<TreeEntry[]>(files)
@@ -30,10 +30,11 @@ export default function FileManager({ projectId, files, settings, close, applied
   }
   async function upload(list: FileList | null, zip: boolean) {
     if (!list?.length || working.current) return
+    const selectedFiles = Array.from(list)
     working.current = true; setBusy(true); setError(''); setMessage('Reading files...')
     try {
       if (zip) {
-        const file = list[0]
+        const file = selectedFiles[0]
         if (file.size > 20 * 1024 * 1024) throw new Error('ZIP uploads are limited to 20 MiB.')
         const buffer = await file.arrayBuffer()
         const worker = new Worker(new URL('./import.worker.ts', import.meta.url), { type: 'module' })
@@ -48,7 +49,8 @@ export default function FileManager({ projectId, files, settings, close, applied
         setIncoming(imported)
       } else {
         const imported: TreeEntry[] = []
-        for (const file of Array.from(list)) {
+        if (selectedFiles.length > 100 || selectedFiles.reduce((sum, file) => sum + file.size, 0) > 30 * 1024 * 1024) throw new Error('Upload at most 100 files and 30 MiB at a time.')
+        for (const file of selectedFiles) {
           if (file.size > 5242880) throw new Error(`File exceeds 5 MiB: ${file.name}`)
           const bytes = new Uint8Array(await file.arrayBuffer())
           if (imageExtension.test(file.name)) {
@@ -64,7 +66,7 @@ export default function FileManager({ projectId, files, settings, close, applied
       }
       setMessage('Review the incoming files before adding them to the staged tree.')
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to read files.'); setMessage('') }
-    finally { working.current = false; setBusy(false) }
+    finally { reader.current?.terminate(); reader.current = null; working.current = false; setBusy(false) }
   }
   async function save() {
     if (working.current) return
@@ -73,8 +75,8 @@ export default function FileManager({ projectId, files, settings, close, applied
     try {
       await applyPaperTree(projectId, settings.revision, entries, main)
       const kept = new Set(entries.filter((entry) => !entry.bytes).map((entry) => entry.storage_path))
-      await cleanupFigures(files.map((file) => file.storage_path).filter((path): path is string => !!path && !kept.has(path)))
-      applied()
+      const cleaned = await cleanupFigures(files.map((file) => file.storage_path).filter((path): path is string => !!path && !kept.has(path)))
+      applied(cleaned ? undefined : 'File changes were saved, but cleanup of unused figures could not be confirmed.')
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to apply changes.'); setMessage('') }
     finally { working.current = false; setBusy(false); onBusy(false) }
   }

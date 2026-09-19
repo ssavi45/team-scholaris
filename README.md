@@ -16,6 +16,12 @@ See [paper exports](docs/paper-03.md) for snapshot and unsaved-draft behavior.
 PAPER-04 adds paper file tree management, figure uploads, and ZIP import. See [PAPER-04](docs/paper-04.md).
 FILES-01 adds a general research files repository with 50 MB file and 500 MB project quotas.
 See [project files repository](docs/files-01.md).
+CHAT-01 adds real-time project chat channels and a bespoke scholarly design system with Google Fonts and Lucide vector icons.
+See [project chat](docs/chat-01.md).
+TEAM-01 adds a dedicated Team tab, invitations, access and research-role editing,
+member removal, and self-leave. See [team management](docs/team-01.md).
+See the [September review and test notes](docs/review-2026-09-19.md) and
+[next build plan: Overview, Meetings, and Settings](docs/next-build.md).
 
 With Docker Desktop running, run `npx --no-install supabase start`, then
 `npm run dev`. Open http://127.0.0.1:5173. Local verification/reset emails

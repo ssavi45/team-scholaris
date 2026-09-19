@@ -7,31 +7,6 @@
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       paper_files: {
@@ -288,6 +263,51 @@ export type Database = {
           },
         ]
       }
+      project_messages: {
+        Row: {
+          channel: string
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          content: string
+          created_at?: string
+          id?: string
+          project_id: string
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           created_at: string
@@ -348,6 +368,14 @@ export type Database = {
         Returns: undefined
       }
       can_access_project: { Args: { project_id: string }; Returns: boolean }
+      can_manage_project_file: {
+        Args: { p_project_id: string; p_uploaded_by: string }
+        Returns: boolean
+      }
+      can_upload_project_file: {
+        Args: { p_project_id: string }
+        Returns: boolean
+      }
       create_paper_file: {
         Args: { p_path: string; p_project_id: string }
         Returns: {
@@ -412,6 +440,21 @@ export type Database = {
           uploader_name: string
         }[]
       }
+      get_project_messages: {
+        Args: { p_channel?: string; p_limit?: number; p_project_id: string }
+        Returns: {
+          channel: string
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          sender_avatar: string
+          sender_id: string
+          sender_name: string
+          sender_role: string
+          updated_at: string
+        }[]
+      }
       get_project_team: {
         Args: { p_project_id: string }
         Returns: {
@@ -423,6 +466,22 @@ export type Database = {
       }
       initialize_paper: { Args: { p_project_id: string }; Returns: undefined }
       invite_expiry_days: { Args: never; Returns: number }
+      leave_project: { Args: { p_project_id: string }; Returns: undefined }
+      remove_project_member: {
+        Args: { p_project_id: string; p_user_id: string; p_expected_access_level: string }
+        Returns: undefined
+      }
+      update_project_member: {
+        Args: {
+          p_project_id: string
+          p_user_id: string
+          p_access_level: string
+          p_display_role: string | null
+          p_expected_access_level: string
+          p_expected_display_role: string | null
+        }
+        Returns: undefined
+      }
       list_project_invitations: {
         Args: { p_project_id?: string; p_token?: string }
         Returns: {
@@ -606,9 +665,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

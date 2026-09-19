@@ -1,5 +1,9 @@
 # INVITE-01: invitations and shared project access
 
+The dedicated **Team** tab now contains invitations and member management.
+See [TEAM-01](team-01.md) for current behavior; the notes below describe the
+original invitation increment.
+
 ## Delivered
 
 Owners of active projects can invite an email as member or viewer from the project Team section. Email addresses are trimmed and lowercased. Invitations expire after seven days. Sending another invitation to the same email replaces the prior unaccepted link; owners can revoke pending invitations. Existing members cannot be reinvited or have their access silently changed.

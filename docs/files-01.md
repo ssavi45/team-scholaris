@@ -19,8 +19,9 @@ The project workspace now includes a central research file repository separate f
 - **Rename & Delete Management**:
   - Modal rename with duplicate name conflict detection and 255-character limits.
   - Deletion removes the database record and cleans up the storage binary.
+  - No-op or denied writes are reported as failures. If binary cleanup cannot be confirmed after record deletion, the UI reports that separately.
 - **Role-Based Access Control**:
-  - Owners and members have full upload and file management permissions.
+  - Owners can manage all files; members can upload and manage their own uploads.
   - Viewers and members of archived projects have read and download access; upload and mutation controls are disabled.
 
 ## Database & Security
@@ -39,6 +40,13 @@ The project workspace now includes a central research file repository separate f
 - **Security Definer Helpers**: `can_upload_project_file` and `can_manage_project_file` enforce strict team membership and ownership without leaking unprivileged `auth.users` table access.
 - **RPC**: `public.get_project_files(p_project_id uuid)` efficiently returns files joined with uploader profile names.
 
+The review migrations `20260919000100_files_chat_review_fixes.sql` and
+`20260919000200_storage_reference_guard.sql` additionally verify uploaded object
+ownership, project path, and actual size; restrict updates to rename fields;
+serialize quota checks; block demoted viewers; and protect referenced objects
+from direct Storage deletion. File removal and binary cleanup are separate
+operations, so interrupted cleanup can leave an unreferenced object.
+
 ## Verification
 
 ```powershell
@@ -46,4 +54,3 @@ npm run lint
 npm run build
 node scripts/test-local-files.mjs
 ```
-

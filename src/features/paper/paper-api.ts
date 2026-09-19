@@ -87,5 +87,9 @@ export async function applyPaperTree(projectId: string, revision: number, entrie
   }
 }
 export async function cleanupFigures(paths: string[]) {
-  if (paths.length) await client().storage.from('paper-figures').remove(paths)
+  if (!paths.length) return true
+  try {
+    const { data, error } = await client().storage.from('paper-figures').remove(paths)
+    return !error && data?.length === paths.length
+  } catch { return false }
 }

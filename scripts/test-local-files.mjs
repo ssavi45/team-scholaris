@@ -4,6 +4,7 @@ import { parseEnv } from 'node:util'
 import { randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { createClient } from '@supabase/supabase-js'
+import ts from 'typescript'
 
 const env = parseEnv(await readFile('.env.local', 'utf8'))
 assert.equal(env.VITE_SUPABASE_URL, 'http://127.0.0.1:54321', 'Local tests only')
@@ -51,6 +52,17 @@ try {
   }
 
   const [owner, member, viewer] = clients
+  const apiSource = (await readFile('src/features/files/files-api.ts', 'utf8')).replace("import { supabase } from '../../lib/supabase'", 'const supabase = globalThis.__filesTestClient')
+  const apiCode = ts.transpileModule(apiSource, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 } }).outputText
+  globalThis.__filesTestClient = member
+  const api = await import('data:text/javascript;base64,' + Buffer.from(apiCode).toString('base64'))
+  delete globalThis.__filesTestClient
+  // Keep quota tests small: upload real one-byte local fixture objects, then
+  // give only those objects synthetic sizes. No user objects are modified.
+  async function quotaObject(path, size) {
+    ok(await owner.storage.from('project-files').upload(path, Buffer.from('x')), 'Quota fixture upload')
+    sql(`update storage.objects set metadata = jsonb_set(metadata, '{size}', '${size}'::jsonb) where bucket_id = 'project-files' and name = '${path}';`)
+  }
 
   // 2. Owner creates a project
   const project = ok(await owner.rpc('create_project', { project_name: 'Files Repository Test' }).single(), 'Create fixture project')
@@ -116,6 +128,32 @@ try {
   const viewerDownloaded = ok(await viewer.storage.from('project-files').download(storagePath), 'Viewer storage download')
   assert.equal(viewerDownloaded.size, filePayload.length)
 
+  // Objects cannot be deleted while a file record still references them.
+  await member.storage.from('project-files').remove([storagePath])
+  ok(await viewer.storage.from('project-files').download(storagePath), 'Referenced object remains available')
+  assert.ok((await member.from('project_files').update({ size_bytes: 1 }).eq('id', fileId)).error, 'Quota metadata cannot be rewritten')
+  assert.ok((await owner.from('project_files').update({ uploaded_by: ids[0] }).eq('id', fileId)).error, 'Uploader cannot be forged')
+  assert.ok((await member.from('project_files').update({ project_id: randomUUID() }).eq('id', fileId)).error, 'Files cannot be moved between projects through UPDATE')
+  sql(`update public.project_members set access_level = 'viewer' where project_id = '${projectId}' and user_id = '${ids[1]}';`)
+  assert.equal(ok(await member.from('project_files').update({ name: 'forbidden.csv' }).eq('id', fileId).select(), 'Demoted uploader rename').length, 0)
+  assert.equal(ok(await member.from('project_files').delete().eq('id', fileId).select(), 'Demoted uploader delete').length, 0)
+  await assert.rejects(api.renameProjectFile(fileId, 'no-op.csv', []), 'Frontend must not report a denied rename as success')
+  await assert.rejects(api.deleteProjectFile(fileId, storagePath), 'Frontend must not report a denied deletion as success')
+  ok(await viewer.storage.from('project-files').download(storagePath), 'Denied frontend delete preserves object')
+  sql(`update public.project_members set access_level = 'member' where project_id = '${projectId}' and user_id = '${ids[1]}';`)
+
+  const stagedId = randomUUID()
+  const stagedPath = `${projectId}/${stagedId}-staged.csv`
+  uploaded.push(stagedPath)
+  ok(await member.storage.from('project-files').upload(stagedPath, filePayload, { contentType: 'text/csv' }), 'Stage another file')
+  const stagedRecord = { id: stagedId, project_id: projectId, name: 'staged.csv', storage_path: stagedPath, size_bytes: filePayload.length, uploaded_by: ids[1] }
+  assert.ok((await member.from('project_files').insert({ ...stagedRecord, size_bytes: 1 })).error, 'Reported size must match storage metadata')
+  assert.ok((await owner.from('project_files').insert({ ...stagedRecord, uploaded_by: ids[0] })).error, 'Cannot claim another uploader object')
+  const secondProject = ok(await owner.rpc('create_project', { project_name: 'Cross-project fixture' }).single(), 'Second fixture project')
+  try {
+    assert.ok((await owner.from('project_files').insert({ ...stagedRecord, project_id: secondProject.id, uploaded_by: ids[0] })).error, 'Cross-project storage reference is rejected')
+  } finally { sql(`delete from public.projects where id = '${secondProject.id}';`) }
+
   // 8. Duplicate filename in same project is rejected
   const dupFileId = randomUUID()
   const dupStoragePath = `${projectId}/${dupFileId}-dataset.csv`
@@ -144,13 +182,12 @@ try {
   assert.ok(hugeInsert.error, 'File size > 50 MB should be rejected by constraint')
 
   // 10. Cumulative project quota trigger test (> 500 MB)
-  const quotaFileId1 = randomUUID()
-  const quotaFileId2 = randomUUID()
   // Insert 10 files of 45 MB each
   for (let k = 0; k < 10; k++) {
     const fid = randomUUID()
     const sp = `${projectId}/${fid}-bulk${k}.bin`
     uploaded.push(sp)
+    await quotaObject(sp, 45 * 1024 * 1024)
     ok(await owner.from('project_files').insert({
       id: fid,
       project_id: projectId,
@@ -168,6 +205,7 @@ try {
   const fid30a = randomUUID()
   const sp30a = `${projectId}/${fid30a}-chunk30a.bin`
   uploaded.push(sp30a)
+  await quotaObject(sp30a, 30 * 1024 * 1024)
   ok(await owner.from('project_files').insert({
     id: fid30a,
     project_id: projectId,
@@ -181,6 +219,8 @@ try {
   // 2nd 30 MB -> total 510 MB > 500 MB (MUST fail with quota exception)
   const fid30b = randomUUID()
   const sp30b = `${projectId}/${fid30b}-chunk30b.bin`
+  uploaded.push(sp30b)
+  await quotaObject(sp30b, 30 * 1024 * 1024)
   const quotaOverflow = await owner.from('project_files').insert({
     id: fid30b,
     project_id: projectId,
@@ -193,8 +233,20 @@ try {
   assert.ok(quotaOverflow.error, 'Project storage quota of 500 MB must reject overflow')
   assert.match(quotaOverflow.error.message, /quota/i, 'Quota error message expected')
 
+  const simultaneous = []
+  for (let k = 0; k < 2; k++) {
+    const id = randomUUID()
+    const path = `${projectId}/${id}-concurrent.bin`
+    uploaded.push(path)
+    await quotaObject(path, 15 * 1024 * 1024)
+    simultaneous.push({ id, project_id: projectId, storage_path: path, name: `concurrent-${k}.bin`, size_bytes: 15 * 1024 * 1024, uploaded_by: ids[0] })
+  }
+  const raced = await Promise.all(simultaneous.map((record) => owner.from('project_files').insert(record)))
+  assert.equal(raced.filter((result) => !result.error).length, 1, 'Only one concurrent upload fits in remaining quota')
+  assert.match(raced.find((result) => result.error).error.message, /quota/i)
+
   // 11. Rename test
-  ok(await member.from('project_files').update({ name: 'cleaned_dataset.csv' }).eq('id', fileId), 'Member rename own file')
+  await api.renameProjectFile(fileId, 'cleaned_dataset.csv', [])
   const renamedFiles = ok(await owner.rpc('get_project_files', { p_project_id: projectId }), 'Fetch after rename')
   assert.ok(renamedFiles.some(f => f.name === 'cleaned_dataset.csv'))
 
@@ -203,8 +255,8 @@ try {
   assert.ok(viewerRename.error || (await owner.from('project_files').select('name').eq('id', fileId).single()).data.name !== 'hacked.csv', 'Viewer cannot rename')
 
   // 12. Delete test
-  ok(await member.from('project_files').delete().eq('id', fileId), 'Member delete own file')
-  ok(await member.storage.from('project-files').remove([storagePath]), 'Storage remove')
+  assert.equal(await api.deleteProjectFile(fileId, storagePath), null, 'Frontend deletes record and cleans storage successfully')
+  assert.ok((await viewer.storage.from('project-files').download(storagePath)).error, 'Deleted binary is absent')
 
   const finalFiles = ok(await owner.rpc('get_project_files', { p_project_id: projectId }), 'Fetch after delete')
   assert.equal(finalFiles.some(f => f.id === fileId), false, 'Deleted file no longer in list')
@@ -213,18 +265,18 @@ try {
 } finally {
   if (projectId) {
     try {
-      sql(`delete from public.projects where id = '${projectId}';`)
+      sql(`delete from public.project_files where project_id = '${projectId}';`)
     } catch {}
   }
   for (const path of uploaded) {
     try {
-      clients[0]?.storage.from('project-files').remove([path])
+      await clients[0]?.storage.from('project-files').remove([path])
     } catch {}
   }
+  if (projectId) sql(`delete from public.projects where id = '${projectId}';`)
   for (const id of ids) {
     try {
       sql(`delete from auth.users where id = '${id}';`)
     } catch {}
   }
 }
-

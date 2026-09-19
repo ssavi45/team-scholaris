@@ -65,7 +65,17 @@ export async function compilePaper(files: SourceFile[], signal: AbortSignal, pro
           }
           for (const folder of [...folders].sort((a, b) => a.split('/').length - b.split('/').length)) worker.postMessage({ cmd: 'mkdir', url: folder })
           for (const file of files) if (file.kind !== 'folder') worker.postMessage({ cmd: 'writefile', url: file.path, src: file.bytes ?? file.content })
-          worker.postMessage({ cmd: 'setmainfile', url: mainFile })
+          // SwiftLaTeX looks for PDF/BibTeX output using the entry path, while
+          // pdfTeX writes the basename at the working root. Use a private root
+          // entry for nested mains, keeping all source paths relative to root.
+          let entryPoint = mainFile
+          if (mainFile.includes('/')) {
+            let suffix = 0
+            const paths = new Set(files.flatMap((file) => [file.path.toLowerCase(), file.path.split('/')[0].toLowerCase()]))
+            do { entryPoint = `scholaris-entry-${suffix++}.tex` } while (paths.has(entryPoint))
+            worker.postMessage({ cmd: 'writefile', url: entryPoint, src: `\\input{${mainFile}}\n` })
+          }
+          worker.postMessage({ cmd: 'setmainfile', url: entryPoint })
           pass = 1; progress('Typesetting, pass 1 of 3...'); worker.postMessage({ cmd: 'compilelatex' })
           return
         }
