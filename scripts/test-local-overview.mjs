@@ -27,7 +27,8 @@ async function api(c) {
   globalThis.__overviewTestClient = c
   const projectSource = (await readFile('src/features/projects/projects-api.ts', 'utf8')).replace("import { supabase } from '../../lib/supabase'", `const supabase = globalThis.__overviewTestClient // ${randomUUID()}`)
   const projectUrl = moduleUrl(projectSource)
-  const overviewSource = (await readFile('src/features/projects/overview-api.ts', 'utf8')).replace("import { supabase } from '../../lib/supabase'", 'const supabase = globalThis.__overviewTestClient').replace("import { loadProject } from './projects-api'", `import { loadProject } from '${projectUrl}'`)
+  const taskTypesUrl = moduleUrl(await readFile('src/features/tasks/task-types.ts', 'utf8'))
+  const overviewSource = (await readFile('src/features/projects/overview-api.ts', 'utf8')).replace("import { supabase } from '../../lib/supabase'", 'const supabase = globalThis.__overviewTestClient').replace("import { loadProject } from './projects-api'", `import { loadProject } from '${projectUrl}'`).replace("import { localDate } from '../tasks/task-types'", `import { localDate } from '${taskTypesUrl}'`)
   const module = await import(moduleUrl(overviewSource))
   delete globalThis.__overviewTestClient
   return (id = projectId, signal = new AbortController().signal) => module.loadOverview(id, signal)

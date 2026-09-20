@@ -13,6 +13,10 @@ See [OVERVIEW-02](overview-02.md) for behavior and verification.
 
 ## Next: MEETINGS-01
 
+TASK-01 was brought forward and is now implemented, pending manual acceptance.
+See [the scope checklist](task-01.md). Its task mutations also establish the
+server-written event foundation for a later Activity build.
+
 Add a Meetings tab in the shared project shell: upcoming and past meetings,
 scheduled time displayed in the user's time zone, agenda, an optional external
 join link, and shared notes. Store timestamps with time-zone information and
@@ -28,8 +32,7 @@ the database and test them before adding the UI controls.
 1. **SETTINGS-01:** owner name/description edits and archive/unarchive, followed
    by ownership transfer and soft-delete/restore with dedicated confirmations.
    Enforce one owner and the recipient's owned-project limit transactionally.
-2. **TASKS-01:** lightweight assignments, status, and due dates after the core MVP.
-3. **Activity:** keep it inside Overview initially; add a dedicated tab when the
+2. **Activity:** keep it inside Overview initially; add a dedicated tab when the
    amount of history and filtering justify it.
 
 The requested project destinations are Overview, Paper workspace, Files, Team,

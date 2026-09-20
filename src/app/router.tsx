@@ -27,6 +27,7 @@ export const router = createBrowserRouter([{
           { path: '/project/:projectId/files', lazy: async () => ({ Component: (await import('../features/files/FilesPage')).FilesPage }) },
           { path: '/project/:projectId/team', lazy: async () => ({ Component: (await import('../features/team/TeamPage')).TeamPage }) },
           { path: '/project/:projectId/chat', lazy: async () => ({ Component: (await import('../features/chat/ChatPage')).ChatPage }) },
+          { path: '/project/:projectId/tasks', lazy: async () => ({ Component: (await import('../features/tasks/TasksPage')).TasksPage }) },
         ],
       }],
     },

@@ -50,7 +50,7 @@ function ProjectOverview({ id }: { id: string }) {
     </div>
   </div>
 
-  const { project, members, paperCount, fileCount, activity, unavailable } = state.data
+  const { project, members, paperCount, fileCount, taskSummary, activity, unavailable } = state.data
   const mine = members.find((member) => member.user_id === user?.id)
   const archived = project.status === 'archived'
   const canEdit = !archived && (mine?.access_level === 'owner' || mine?.access_level === 'member')
@@ -81,6 +81,7 @@ function ProjectOverview({ id }: { id: string }) {
         </section>
       </div>
       <aside className="overview-sidebar" aria-label="Project details">
+        <section className="overview-card"><p className="eyebrow">NEXT STEPS</p><h2>Research tasks</h2>{taskSummary ? <dl className="overview-task-counts"><div><dt>Open</dt><dd><Link to={`/project/${id}/tasks?filter=open`}>{taskSummary.open_count}</Link></dd></div><div><dt>Overdue</dt><dd><Link to={`/project/${id}/tasks?filter=overdue`}>{taskSummary.overdue_count}</Link></dd></div><div><dt>Assigned to you</dt><dd><Link to={`/project/${id}/tasks?filter=mine`}>{taskSummary.mine_count}</Link></dd></div></dl> : <p className="muted">Task summary unavailable. Refresh to try again.</p>}<Link to={`/project/${id}/tasks`} className="overview-inline-link">View all tasks <ArrowUpRight size={14} aria-hidden="true" /></Link></section>
         <section className="overview-card overview-access-card"><ShieldCheck size={22} aria-hidden="true" /><p className="eyebrow">YOUR PLACE ON THE TEAM</p><h2 className="overview-access-level">{mine?.access_level ?? 'Access unavailable'}</h2><p className="muted">{archived ? 'This project is archived. You can browse its research and conversations.' : canEdit ? 'You can edit the paper, share research files, and contribute to discussions.' : 'You can read the paper and chat, and download shared research files.'}</p>{mine?.display_role && <p className="overview-research-role">{mine.display_role}</p>}<Link to={`/project/${id}/team`} className="overview-inline-link">View project team <ArrowUpRight size={14} aria-hidden="true" /></Link></section>
         <section className="overview-card"><h2>Project details</h2><dl className="overview-details"><div><dt>Created</dt><dd><time dateTime={project.created_at}>{new Date(project.created_at).toLocaleDateString(undefined, { dateStyle: 'medium' })}</time></dd></div><div><dt>Status</dt><dd>{archived ? 'Archived' : 'Active'}</dd></div><div><dt>Visibility</dt><dd>Project team only</dd></div></dl><p className="form-note">Shared with invited collaborators.</p></section>
       </aside>

@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import { loadProject } from './projects-api'
+import { localDate } from '../tasks/task-types'
 
 export type OverviewActivity = { id: string; kind: 'paper' | 'files' | 'chat' | 'project'; label: string; at: string }
 const channels: Record<string, string> = { discussion: 'Project Discussion', announcements: 'Announcements', ideas: 'Ideas & References', experiments: 'Experiments', general: 'General' }
@@ -18,9 +19,11 @@ export async function loadOverview(projectId: string, signal: AbortSignal) {
     supabase.from('paper_files').select('id,path,updated_at', { count: 'exact' }).eq('project_id', projectId).neq('kind', 'folder').order('updated_at', { ascending: false }).order('id').limit(8).abortSignal(signal),
     supabase.from('project_files').select('id,name,created_at', { count: 'exact' }).eq('project_id', projectId).order('created_at', { ascending: false }).order('id').limit(8).abortSignal(signal),
     supabase.from('project_messages').select('id,channel,created_at').eq('project_id', projectId).order('created_at', { ascending: false }).order('id').limit(8).abortSignal(signal),
+    supabase.rpc('get_project_task_summary', { p_project_id: projectId, p_today: localDate() }).single().abortSignal(signal),
   ])
   signal.throwIfAborted()
   const paper = successful(results[0]), files = successful(results[1]), chat = successful(results[2])
+  const tasks = successful(results[3])
   // Recheck access after the parallel reads: a revoked membership should replace
   // the whole Overview with the unavailable state, not misleading zero counts.
   const current = await loadProject(projectId, signal)
@@ -36,7 +39,8 @@ export async function loadOverview(projectId: string, signal: AbortSignal) {
     ...current,
     paperCount: paper?.count ?? null,
     fileCount: files?.count ?? null,
+    taskSummary: tasks?.data ?? null,
     activity: activity.slice(0, 8),
-    unavailable: [!paper && 'paper', !files && 'files', !chat && 'chat'].filter((name): name is string => !!name),
+    unavailable: [!paper && 'paper', !files && 'files', !chat && 'chat', !tasks && 'tasks'].filter((name): name is string => !!name),
   }
 }

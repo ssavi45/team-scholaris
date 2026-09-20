@@ -22,6 +22,8 @@ TEAM-01 adds a dedicated Team tab, invitations, access and research-role editing
 member removal, and self-leave. See [team management](docs/team-01.md).
 OVERVIEW-02 brings real counts, workspace shortcuts, access details, and recent
 activity into the project Overview. See [project overview](docs/overview-02.md).
+TASK-01 adds research task assignments, priorities, due dates, progress states,
+and Overview task summaries. See [task scope and manual checklist](docs/task-01.md).
 See the [September review and test notes](docs/review-2026-09-19.md) and
 [next build plan: Meetings and Settings](docs/next-build.md).
 

@@ -6,7 +6,7 @@ export interface ProjectTabShellProps {
   projectId: string
   projectName: string
   projectStatus: 'active' | 'archived'
-  activeTab: 'overview' | 'files' | 'team' | 'chat'
+  activeTab: 'overview' | 'files' | 'team' | 'chat' | 'tasks'
   categoryLabel?: string
   isArchived?: boolean
   children: ReactNode
@@ -28,6 +28,8 @@ export function ProjectTabShell({
       ? 'PROJECT FILES'
       : activeTab === 'team'
       ? 'PROJECT TEAM'
+      : activeTab === 'tasks'
+      ? 'PROJECT TASKS'
       : 'PROJECT DISCUSSION'
 
   const category = categoryLabel || defaultCategory
@@ -92,6 +94,7 @@ export function ProjectTabShell({
           ) : (
             <Link to={`/project/${projectId}/chat`}>Chat</Link>
           )}
+          {activeTab === 'tasks' ? <span aria-current="page">Tasks</span> : <Link to={`/project/${projectId}/tasks`}>Tasks</Link>}
         </nav>
       </div>
 

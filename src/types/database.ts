@@ -6,6 +6,8 @@
   | { [key: string]: Json | undefined }
   | Json[]
 
+import type { Task, TaskRow, TaskSummary } from '../features/tasks/task-types'
+
 export type Database = {
   public: {
     Tables: {
@@ -354,6 +356,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_project_tasks: { Args: { p_project_id: string }; Returns: Task[] }
+      get_project_task_summary: { Args: { p_project_id: string; p_today: string }; Returns: TaskSummary[] }
+      save_project_task: {
+        Args: { p_project_id: string; p_task_id: string; p_revision: number; p_title: string; p_description: string; p_assignee_id: string | null; p_status: string; p_priority: string; p_due_date: string | null }
+        Returns: TaskRow
+      }
+      delete_project_task: { Args: { p_project_id: string; p_task_id: string; p_revision: number }; Returns: undefined }
       accept_project_invitation: {
         Args: { p_invitation_id?: string; p_token?: string }
         Returns: string
