@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { ArrowLeft, ArrowUpRight, FileText, FolderOpen, Users, MessageSquare, RefreshCw, Clock3, Sprout, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, FileText, FolderOpen, Users, MessageSquare, RefreshCw, Clock3, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../auth/auth-context'
 import { loadOverview } from './overview-api'
 import { ProjectTabShell } from '../../components/layout/ProjectTabShell'
+import { ActivityList } from '../activity/ActivityList'
+import { meetingTime, viewerZone } from '../meetings/meeting-types'
 
-const activityIcons = { paper: FileText, files: FolderOpen, chat: MessageSquare, project: Sprout }
 const destinations = { paper: 'Paper workspace', files: 'Files', team: 'Team', chat: 'Chat' }
 
 export function ProjectPage() {
@@ -50,7 +51,7 @@ function ProjectOverview({ id }: { id: string }) {
     </div>
   </div>
 
-  const { project, members, paperCount, fileCount, taskSummary, activity, unavailable } = state.data
+  const { project, members, paperCount, fileCount, taskSummary, nextMeeting, activity, unavailable } = state.data
   const mine = members.find((member) => member.user_id === user?.id)
   const archived = project.status === 'archived'
   const canEdit = !archived && (mine?.access_level === 'owner' || mine?.access_level === 'member')
@@ -72,15 +73,14 @@ function ProjectOverview({ id }: { id: string }) {
         <section className="overview-card" aria-labelledby="research-title"><p className="eyebrow">THE RESEARCH</p><h2 id="research-title">About this project</h2><p className="overview-description">{project.description || 'No description has been added yet.'}</p></section>
         <section className="overview-card" aria-labelledby="activity-title" aria-busy={state.loading}>
           <div className="overview-card-heading"><div><p className="eyebrow">KEEP UP WITH THE PROJECT</p><h2 id="activity-title">Recent activity</h2></div><Clock3 size={20} aria-hidden="true" /></div>
-          {activity.length === 1 && !unavailable.length && <p className="overview-start-note">Your project is ready. Paper changes, shared files, and conversations will appear here as the team gets started.</p>}
-          <ol className="overview-activity-list">{activity.map((item) => {
-            const Icon = activityIcons[item.kind]
-            return <li key={item.id}><span className="overview-activity-icon"><Icon size={16} aria-hidden="true" /></span><div className="overview-activity-text"><p>{item.label}</p><time dateTime={item.at}>{new Date(item.at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</time></div>{item.kind !== 'project' && <Link to={`/project/${id}/${item.kind}`} className="overview-activity-link" aria-label={`Open ${destinations[item.kind]}: ${item.label}`}>View <ArrowUpRight size={13} aria-hidden="true" /></Link>}</li>
-          })}</ol>
-          <p className="form-note overview-activity-note">Recent file additions, latest changes to paper files, and messages. Deleted items are not included.</p>
+          {!activity.length && <p className="overview-start-note">{unavailable.includes('activity') ? 'Activity could not load. Refresh to try again.' : 'No recorded activity yet. New project actions will appear here.'}</p>}
+          <ActivityList events={activity} projectId={id} />
+          <Link className="overview-inline-link" to={`/project/${id}/activity`}>View all activity <ArrowUpRight size={14} aria-hidden="true" /></Link>
+          <p className="form-note overview-activity-note">Recorded project history, including deleted items. Earlier actions that were not tracked are not reconstructed.</p>
         </section>
       </div>
       <aside className="overview-sidebar" aria-label="Project details">
+        <section className="overview-card"><p className="eyebrow">TIME TO CONNECT</p><h2>Next meeting</h2>{unavailable.includes('meetings') ? <p className="muted">Meeting summary unavailable. Refresh to try again.</p> : nextMeeting ? <><h3 className="meeting-overview-title">{nextMeeting.title}</h3><p>{meetingTime(nextMeeting.starts_at)}</p><p className="form-note">Until {meetingTime(nextMeeting.ends_at)} · {viewerZone()}</p><Link className="overview-inline-link" to={`/project/${id}/meetings?meeting=${nextMeeting.id}`}>Open meeting <ArrowUpRight size={14} aria-hidden="true" /></Link></> : <p className="muted">No upcoming meetings yet.</p>}<Link className="overview-inline-link" to={`/project/${id}/meetings`}>View all meetings <ArrowUpRight size={14} aria-hidden="true" /></Link></section>
         <section className="overview-card"><p className="eyebrow">NEXT STEPS</p><h2>Research tasks</h2>{taskSummary ? <dl className="overview-task-counts"><div><dt>Open</dt><dd><Link to={`/project/${id}/tasks?filter=open`}>{taskSummary.open_count}</Link></dd></div><div><dt>Overdue</dt><dd><Link to={`/project/${id}/tasks?filter=overdue`}>{taskSummary.overdue_count}</Link></dd></div><div><dt>Assigned to you</dt><dd><Link to={`/project/${id}/tasks?filter=mine`}>{taskSummary.mine_count}</Link></dd></div></dl> : <p className="muted">Task summary unavailable. Refresh to try again.</p>}<Link to={`/project/${id}/tasks`} className="overview-inline-link">View all tasks <ArrowUpRight size={14} aria-hidden="true" /></Link></section>
         <section className="overview-card overview-access-card"><ShieldCheck size={22} aria-hidden="true" /><p className="eyebrow">YOUR PLACE ON THE TEAM</p><h2 className="overview-access-level">{mine?.access_level ?? 'Access unavailable'}</h2><p className="muted">{archived ? 'This project is archived. You can browse its research and conversations.' : canEdit ? 'You can edit the paper, share research files, and contribute to discussions.' : 'You can read the paper and chat, and download shared research files.'}</p>{mine?.display_role && <p className="overview-research-role">{mine.display_role}</p>}<Link to={`/project/${id}/team`} className="overview-inline-link">View project team <ArrowUpRight size={14} aria-hidden="true" /></Link></section>
         <section className="overview-card"><h2>Project details</h2><dl className="overview-details"><div><dt>Created</dt><dd><time dateTime={project.created_at}>{new Date(project.created_at).toLocaleDateString(undefined, { dateStyle: 'medium' })}</time></dd></div><div><dt>Status</dt><dd>{archived ? 'Archived' : 'Active'}</dd></div><div><dt>Visibility</dt><dd>Project team only</dd></div></dl><p className="form-note">Shared with invited collaborators.</p></section>

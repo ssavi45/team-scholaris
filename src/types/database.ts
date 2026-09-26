@@ -7,6 +7,9 @@
   | Json[]
 
 import type { Task, TaskRow, TaskSummary } from '../features/tasks/task-types'
+import type { ActivityEvent } from '../features/activity/activity-types'
+import type { Meeting } from '../features/meetings/meeting-types'
+import type { TrashProject } from '../features/settings/settings-types'
 
 export type Database = {
   public: {
@@ -312,6 +315,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          settings_revision: number
           created_at: string
           deleted_at: string | null
           description: string
@@ -322,6 +326,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          settings_revision?: number
           created_at?: string
           deleted_at?: string | null
           description?: string
@@ -332,6 +337,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          settings_revision?: number
           created_at?: string
           deleted_at?: string | null
           description?: string
@@ -356,6 +362,40 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_project_settings: { Args: { p_project_id: string }; Returns: Json }
+      project_recovery_days: { Args: never; Returns: number }
+      list_deleted_owned_projects: {
+        Args: { p_before_at?: string; p_before_id?: string; p_limit?: number }
+        Returns: TrashProject[]
+      }
+      update_project_details: {
+        Args: { p_project_id: string; p_expected_revision: number; p_operation_id: string; p_name: string; p_description: string }
+        Returns: Json
+      }
+      set_project_archived: {
+        Args: { p_project_id: string; p_expected_revision: number; p_operation_id: string; p_archived: boolean }
+        Returns: Json
+      }
+      transfer_project_ownership: {
+        Args: { p_project_id: string; p_expected_revision: number; p_operation_id: string; p_recipient_id: string }
+        Returns: Json
+      }
+      trash_project: { Args: { p_project_id: string; p_expected_revision: number; p_operation_id: string }; Returns: Json }
+      restore_project: { Args: { p_project_id: string; p_expected_revision: number; p_operation_id: string }; Returns: Json }
+      get_project_meetings: {
+        Args: { p_project_id: string; p_view?: string; p_limit?: number; p_cursor_at?: string; p_cursor_id?: string; p_meeting_id?: string }
+        Returns: Meeting[]
+      }
+      save_project_meeting: {
+        Args: { p_project_id: string; p_meeting_id: string; p_revision: number; p_title: string; p_starts_at: string; p_ends_at: string; p_time_zone: string; p_agenda: string; p_notes: string; p_join_url: string; p_attendee_ids: string[] }
+        Returns: undefined
+      }
+      cancel_project_meeting: { Args: { p_project_id: string; p_meeting_id: string; p_revision: number }; Returns: undefined }
+      get_project_activity: {
+        Args: { p_project_id: string; p_limit?: number; p_category?: string; p_actor_id?: string; p_from?: string; p_to?: string; p_before_at?: string; p_before_id?: string }
+        Returns: ActivityEvent[]
+      }
+      get_project_activity_actors: { Args: { p_project_id: string }; Returns: { user_id: string; name: string }[] }
       get_project_tasks: { Args: { p_project_id: string }; Returns: Task[] }
       get_project_task_summary: { Args: { p_project_id: string; p_today: string }; Returns: TaskSummary[] }
       save_project_task: {
@@ -408,6 +448,7 @@ export type Database = {
       create_project: {
         Args: { project_description?: string; project_name: string }
         Returns: {
+          settings_revision: number
           created_at: string
           deleted_at: string | null
           description: string

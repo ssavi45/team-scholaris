@@ -23,7 +23,7 @@ export async function loadTasks(projectId: string, userId: string, filter: TaskF
   return { tasks: data ?? [], count: count ?? 0 }
 }
 export async function loadTaskSummary(projectId: string, signal: AbortSignal, today = localDate()) {
-  const { data, error } = await client().rpc('get_project_task_summary', { p_project_id: projectId, p_today: today }).single().abortSignal(signal)
+  const { data, error } = await client().rpc('get_project_task_summary', { p_project_id: projectId, p_today: today }).abortSignal(signal).single()
   if (error) throw new Error('Unable to load task counts.')
   return data
 }

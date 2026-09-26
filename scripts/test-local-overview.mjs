@@ -50,7 +50,9 @@ try {
   const empty = await ownerOverview()
   assert.equal(empty.paperCount, 0); assert.equal(empty.fileCount, 0)
   assert.deepEqual(empty.unavailable, [])
-  assert.equal(empty.activity.length, 1); assert.equal(empty.activity[0].kind, 'project')
+  assert.equal(empty.activity.length, 2)
+  assert.ok(empty.activity.some((event) => event.event_type === 'project.created'))
+  assert.ok(empty.activity.some((event) => event.event_type === 'team.joined'))
   assert.equal(await outsiderOverview(), null, 'Private metadata stays private')
   assert.equal(await ownerOverview('not-a-uuid'), null)
   sql(`insert into public.project_members(project_id,user_id,access_level) values ('${projectId}','${ids[1]}','viewer');`)
@@ -62,9 +64,9 @@ try {
   assert.equal(populated.paperCount, 12, 'Count covers all files, excludes folders, and is not capped at preview limit')
   assert.equal(populated.members.length, 2)
   assert.equal(populated.activity.length, 8)
-  assert.equal(populated.activity.every((a) => a.kind === 'paper'), true)
+  assert.equal(populated.activity.every((a) => a.category === 'paper'), true)
   for (const request of requests.filter((url) => /\/(paper_files|project_files|project_messages)$/.test(url.pathname))) {
-    assert.equal(request.searchParams.get('limit'), '8')
+    assert.equal(request.searchParams.get('select'), 'id', 'Counts require metadata only')
     assert.doesNotMatch(request.searchParams.get('select'), /content|storage_path|\*/)
   }
   console.log('PASS empty state, full counts beyond preview limit, folder exclusion, viewer reads, metadata-only bounded queries')
@@ -72,8 +74,8 @@ try {
   for (let n = 0; n < 10; n++) ok(await owner.from('project_messages').insert({ project_id: projectId, sender_id: ids[0], channel: 'experiments', content: `Private message body ${n}` }), 'Post message')
   const recent = await ownerOverview()
   assert.equal(recent.activity.length, 8)
-  assert.equal(recent.activity.every((a) => a.kind === 'chat'), true, 'All eight newest items may come from one source')
-  assert.equal(recent.activity.every((a) => a.label === 'Message posted in Experiments'), true)
+  assert.equal(recent.activity.every((a) => a.category === 'chat'), true, 'All eight newest items may come from one source')
+  assert.equal(recent.activity.every((a) => a.event_type === 'chat.posted' && a.metadata.channel === 'experiments'), true)
   assert.equal(JSON.stringify(recent).includes('Private message body'), false)
   failFiles = true
   const partial = await ownerOverview()

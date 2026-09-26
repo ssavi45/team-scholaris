@@ -6,7 +6,7 @@ export interface ProjectTabShellProps {
   projectId: string
   projectName: string
   projectStatus: 'active' | 'archived'
-  activeTab: 'overview' | 'files' | 'team' | 'chat' | 'tasks'
+  activeTab: 'overview' | 'files' | 'team' | 'chat' | 'tasks' | 'activity' | 'meetings' | 'settings'
   categoryLabel?: string
   isArchived?: boolean
   children: ReactNode
@@ -30,6 +30,12 @@ export function ProjectTabShell({
       ? 'PROJECT TEAM'
       : activeTab === 'tasks'
       ? 'PROJECT TASKS'
+      : activeTab === 'activity'
+      ? 'PROJECT ACTIVITY'
+      : activeTab === 'meetings'
+      ? 'PROJECT MEETINGS'
+      : activeTab === 'settings'
+      ? 'PROJECT SETTINGS'
       : 'PROJECT DISCUSSION'
 
   const category = categoryLabel || defaultCategory
@@ -94,7 +100,10 @@ export function ProjectTabShell({
           ) : (
             <Link to={`/project/${projectId}/chat`}>Chat</Link>
           )}
+          {activeTab === 'meetings' ? <span aria-current="page">Meetings</span> : <Link to={`/project/${projectId}/meetings`}>Meetings</Link>}
+          {activeTab === 'settings' ? <span aria-current="page">Settings</span> : <Link to={`/project/${projectId}/settings`}>Settings</Link>}
           {activeTab === 'tasks' ? <span aria-current="page">Tasks</span> : <Link to={`/project/${projectId}/tasks`}>Tasks</Link>}
+          {activeTab === 'activity' ? <span aria-current="page">Activity</span> : <Link to={`/project/${projectId}/activity`}>Activity</Link>}
         </nav>
       </div>
 

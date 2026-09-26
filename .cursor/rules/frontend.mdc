@@ -1,0 +1,15 @@
+---
+description: Scholaris React, feature API boundaries, layout and UX
+globs: "src/**/*.{ts,tsx,css},index.html,vite.config.ts"
+alwaysApply: false
+---
+
+Follow [RULES.md](../../RULES.md), [ARCHITECTURE.md](../../docs/ARCHITECTURE.md)
+and [DESIGN.md](../../docs/DESIGN.md). Reuse typed feature API modules and existing
+components/dependencies. Every ordinary project tab uses ProjectTabShell; Paper
+keeps its independent full-width workspace.
+
+Preserve drafts, revision conflicts, keyboard behavior and stale-request guards.
+Provide loading/empty/error/read-only/unavailable states and truthful status.
+Never place secret/server credentials in VITE_ variables or UI code. Frontend
+permission checks complement backend enforcement; they do not replace it.

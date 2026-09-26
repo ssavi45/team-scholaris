@@ -1,0 +1,15 @@
+---
+description: Scholaris Supabase migrations, functions, permissions and data integrity
+globs: "supabase/**/*,src/types/database.ts,src/features/**/*-api.ts"
+alwaysApply: false
+---
+
+Follow [RULES.md](../../RULES.md) and [SECURITY.md](../../docs/SECURITY.md).
+Inspect the full migration chain before editing. Preserve RLS/column grants,
+exactly one owner, current membership checks, quotas, versions and transactional
+history. Use narrow authorized RPCs with fixed search paths where appropriate.
+
+Validate inputs and lock order; reconcile retries without duplicate side effects.
+Preserve private Storage references and historical attribution. Keep Google and
+email secrets backend-only. Do not reset data or assume local changes are deployed
+to hosted Supabase. Update the frontend database contract when SQL changes.

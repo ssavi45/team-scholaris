@@ -1,0 +1,14 @@
+---
+description: Team Scholaris scope, context, and documentation rules
+alwaysApply: true
+---
+
+Read and follow [RULES.md](../../RULES.md), subject to the current user request.
+Start with [MEMORY.md](../../docs/MEMORY.md) and [task.md](../../task.md), then
+inspect the actual code and Git state. Preserve unrelated local work. Implement
+only the authorized increment; Google Meet integration is paused.
+
+Root task.md is the only build tracker. Update it and canonical docs instead of
+creating per-build Markdown. Do not claim unrun tests or undeployed migrations
+passed. Do not introduce paid services, dependencies or architectural replacements
+without a concrete need and the applicable authorization.

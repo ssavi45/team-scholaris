@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useMatch } from 'react-router'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../features/auth/auth-context'
+import { BrandLogo } from '../BrandLogo'
 
 export function AppShell() {
   const paperRoute = useMatch('/project/:projectId/paper')
@@ -21,7 +22,7 @@ export function AppShell() {
   return <div className={`app-shell${paperRoute ? ' paper-shell' : ''}`}>
     <a className="skip-link" href="#main-content">Skip to content</a>
     <header className="app-header">
-      <NavLink className="brand" to="/app">Team Scholaris</NavLink>
+      <NavLink className="brand" to="/app"><BrandLogo /></NavLink>
       <nav aria-label="Main navigation"><NavLink to="/app">Dashboard</NavLink></nav>
       <span className="account-email">{user?.email}</span>
       <button className="button secondary sign-out" onClick={() => void signOut()} disabled={busy}>{busy ? 'Signing out...' : 'Sign out'}</button>

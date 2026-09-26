@@ -1,111 +1,118 @@
 # Team Scholaris
 
-Local Supabase authentication is connected: registration, email verification,
-login, password recovery, persistent sessions, and logout. Google OAuth still
-requires provider credentials. PROJECT-01 adds a real dashboard, project creation,
-and private project overviews with database-enforced ownership and limits.
-See [PROJECT-01](docs/project-01.md) for behavior and acceptance tests.
-INVITE-01 adds owner invitations, local email delivery, verified acceptance,
-and shared team access. See [invitation setup and tests](docs/invite-01.md).
-PAPER-01 adds a single-user LaTeX source editor with versioned saves and a file tree.
-See [paper workspace setup and tests](docs/paper-01.md).
-PAPER-02 adds browser-side LaTeX compilation, PDF preview, and a full-width editing layout.
-See [compilation and preview](docs/paper-02.md) for usage, requirements, and tests.
-PAPER-03 adds PDF and source ZIP downloads through the paper toolbar's **Export** action.
-See [paper exports](docs/paper-03.md) for snapshot and unsaved-draft behavior.
-PAPER-04 adds paper file tree management, figure uploads, and ZIP import. See [PAPER-04](docs/paper-04.md).
-FILES-01 adds a general research files repository with 50 MB file and 500 MB project quotas.
-See [project files repository](docs/files-01.md).
-CHAT-01 adds real-time project chat channels and a bespoke scholarly design system with Google Fonts and Lucide vector icons.
-See [project chat](docs/chat-01.md).
-TEAM-01 adds a dedicated Team tab, invitations, access and research-role editing,
-member removal, and self-leave. See [team management](docs/team-01.md).
-OVERVIEW-02 brings real counts, workspace shortcuts, access details, and recent
-activity into the project Overview. See [project overview](docs/overview-02.md).
-TASK-01 adds research task assignments, priorities, due dates, progress states,
-and Overview task summaries. See [task scope and manual checklist](docs/task-01.md).
-See the [September review and test notes](docs/review-2026-09-19.md) and
-[next build plan: Meetings and Settings](docs/next-build.md).
+Team Scholaris is a private research workspace for university students, paper
+teams, and small labs. Teams can write a LaTeX paper, share research files,
+discuss work, assign tasks, and organize meetings in one project.
 
-With Docker Desktop running, run `npx --no-install supabase start`, then
-`npm run dev`. Open http://127.0.0.1:5173. Local verification/reset emails
-appear in Mailpit at http://127.0.0.1:54324.
+The application uses React, TypeScript, Vite, and Supabase. The paper editor
+compiles LaTeX in the browser. Local development is the current reference
+environment; a production frontend deployment is not yet established.
 
-See [the setup and manual test guide](docs/auth-foundation.md) for environment
-configuration, validation commands, Google OAuth setup, and remaining work.
+## Current status
 
-## Original Vite template notes
+Authentication, projects, invitations, team management, paper editing/compilation/
+export/import, files, chat, overview, tasks, activity, and basic meetings are
+implemented. Google Calendar/Meet integration is **paused and not accepted**:
+the local browser connection has an unresolved credentialed CORS failure.
+**SETTINGS-01 is implemented locally and awaiting manual acceptance.** Project
+Settings now includes details, archive/unarchive, ownership transfer and Trash;
+Dashboard Trash restores eligible projects into archived mode. See [current state](docs/MEMORY.md)
+and the [single build tracker](task.md).
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Local setup
 
-Currently, two official plugins are available:
+Use Node.js 24 and npm with the committed lockfile, plus Docker Desktop for
+local Supabase. Run commands from the repository root.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```powershell
+npm ci
+npx --no-install supabase start
+npx --no-install supabase migration up --local
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+On first setup only, copy [.env.example](.env.example) to `.env.local` without
+overwriting an existing configuration. Set:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```dotenv
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_PUBLISHABLE_KEY=<local publishable or legacy anon key>
+VITE_GOOGLE_AUTH_ENABLED=false
 ```
+
+Get the browser-safe key from your local Supabase configuration/status. Status
+output also contains privileged credentials: never paste the whole output into
+documentation, frontend configuration, or commits. The public key variable accepts
+both `sb_publishable_...` and legacy JWT keys declaring the `anon` role. Secret
+and service-role credentials must never enter any `VITE_` variable.
+
+For invitation email delivery, copy
+[the function environment example](supabase/functions/.env.example) to
+`supabase/functions/.env.local` on first setup. Its default Mailpit configuration
+captures local email. Google fields may remain empty while that work is paused.
+Keep this command running in a separate terminal:
+
+```powershell
+npx --no-install supabase functions serve send-project-invitation --env-file supabase/functions/.env.local
+```
+
+Start the frontend:
+
+```powershell
+npm run dev
+```
+
+| Service | Local address |
+| --- | --- |
+| Frontend | http://127.0.0.1:5173 |
+| Supabase API | http://127.0.0.1:54321 |
+| Supabase Studio | http://127.0.0.1:54323 |
+| Mailpit | http://127.0.0.1:54324 |
+| PostgreSQL | `127.0.0.1:54322` |
+
+Open verification/reset links from Mailpit in the same browser and origin that
+started the auth flow. Mailpit does not deliver messages to real inboxes. Local
+and hosted Supabase users/data are separate. Do not reset the database to apply
+pending migrations. Missing backend configuration displays a configuration state;
+it does not simulate a working login.
+
+## Commands and verification
+
+```powershell
+npm run lint
+npm run build
+git diff --check
+```
+
+`npm run preview` serves the production frontend build locally. There is no
+`npm test` script: existing focused checks live in `scripts/test-*.mjs`.
+[TEST_PLAN.md](docs/TEST_PLAN.md) describes prerequisites, manual acceptance,
+fixture effects, and which checks apply to each feature.
+
+## Documentation
+
+| Document | Purpose |
+| --- | --- |
+| [PRD](docs/PRD.md) | Product problem, users, requirements, scope, and success criteria |
+| [Architecture](docs/ARCHITECTURE.md) | Runtime, data model, folder structure, integrations, deployment boundaries |
+| [Design](docs/DESIGN.md) | Current visual system, shared shell, paper exception, interaction conventions |
+| [Test plan](docs/TEST_PLAN.md) | Verification commands and acceptance scenarios |
+| [Security](docs/SECURITY.md) | Trust boundaries, permissions, secrets, uploads, release requirements |
+| [Decisions](docs/DECISIONS.md) | Durable decisions and departures from the original brief |
+| [Memory](docs/MEMORY.md) | Current implementation, acceptance evidence, known issues, next handoff |
+| [Development rules](RULES.md) | Contributor and AI working rules; Cursor adapters in `.cursor/rules/` |
+| [task.md](task.md) | The only build task tracker; update it for the next authorized increment |
+
+The actual folder structure is documented in Architecture. Tests stay in
+`scripts/`; no parallel `tests/` framework is introduced by this documentation.
+Both environment examples contain placeholders only. `.gitignore` excludes local
+environment files, dependency directories, build output, and logs.
+
+## Hosted environment
+
+A hosted Supabase project exists, but local migration history is not proof that
+the hosted database is current. Before deployment, inspect the target migration
+history and proposed changes, configure Auth URLs and function secrets, review
+storage/RLS, and complete the release checks in the test and security documents.
+Frontend hosting remains undecided; it must serve SPA deep links and compiler
+assets correctly. Google sign-in configuration and Calendar authorization are
+separate integrations. Neither is enabled merely by connecting a GitHub repository.

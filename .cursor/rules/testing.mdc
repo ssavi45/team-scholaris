@@ -1,0 +1,15 @@
+---
+description: Scholaris focused verification and truthful acceptance reporting
+globs: "scripts/**/*,package.json,docs/TEST_PLAN.md"
+alwaysApply: false
+---
+
+Follow [RULES.md](../../RULES.md) and [TEST_PLAN.md](../../docs/TEST_PLAN.md).
+Existing test harnesses live in scripts; no npm test framework is assumed.
+Run relevant checks within the authorized scope and respect manual-test requests.
+Local fixture suites must not target hosted data. Inspect cleanup and provider
+side effects before running them. Never log credentials or token-bearing URLs.
+
+Browser CORS/OAuth needs browser verification; Node fetch is insufficient.
+Report exact checks performed, failures and deferred acceptance. Documentation
+changes need link/consistency/whitespace checks, not unrelated fixture execution.
