@@ -2,6 +2,19 @@ import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database'
 
 export type ProjectMessage = Database['public']['Functions']['get_project_messages']['Returns'][number]
+export type ChatAvatar = { preset: number; imageUrl: string | null }
+
+export async function loadProjectAvatars(projectId: string, signal: AbortSignal): Promise<Record<string, ChatAvatar>> {
+  const { data, error } = await client().rpc('get_project_avatars', { p_project_id: projectId }).abortSignal(signal)
+  if (error) throw new Error('Unable to load team avatars. Refresh to retry.')
+  const paths = data.flatMap(row => row.avatar_path ? [row.avatar_path] : [])
+  const signed = paths.length ? await client().storage.from('profile-avatars').createSignedUrls(paths, 3600) : null
+  if (signal.aborted) return {}
+  const urls = new Map(signed?.data?.map(item => [item.path, item.signedUrl]))
+  return Object.fromEntries(data.map(row => [row.user_id, {
+    preset: row.avatar_preset, imageUrl: row.avatar_path ? urls.get(row.avatar_path) || null : null,
+  }]))
+}
 
 function client() {
   if (!supabase) throw new Error('Supabase is not configured.')

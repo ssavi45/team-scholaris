@@ -10,6 +10,7 @@ import type { Task, TaskRow, TaskSummary } from '../features/tasks/task-types'
 import type { ActivityEvent } from '../features/activity/activity-types'
 import type { Meeting } from '../features/meetings/meeting-types'
 import type { TrashProject } from '../features/settings/settings-types'
+import type { AccountProfile } from '../features/profile/profile-types'
 
 export type Database = {
   public: {
@@ -88,15 +89,15 @@ export type Database = {
         ]
       }
       profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          id: string
-          name: string
-          updated_at: string
-        }
+        Row: AccountProfile
         Insert: {
           avatar_url?: string | null
+          username?: string
+          badge_display?: 'username' | 'email'
+          avatar_preset?: number
+          avatar_path?: string | null
+          affiliation?: string
+          bio?: string
           created_at?: string
           id: string
           name?: string
@@ -104,6 +105,12 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          username?: string
+          badge_display?: 'username' | 'email'
+          avatar_preset?: number
+          avatar_path?: string | null
+          affiliation?: string
+          bio?: string
           created_at?: string
           id?: string
           name?: string
@@ -362,6 +369,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_project_avatars: {
+        Args: { p_project_id: string }
+        Returns: { user_id: string; avatar_preset: number; avatar_path: string | null }[]
+      }
+      save_account_profile: {
+        Args: { p_expected_updated_at: string; p_name: string; p_username: string;
+          p_badge_display: string; p_avatar_preset: number; p_avatar_path: string | null;
+          p_affiliation: string; p_bio: string }
+        Returns: AccountProfile
+      }
       get_project_settings: { Args: { p_project_id: string }; Returns: Json }
       project_recovery_days: { Args: never; Returns: number }
       list_deleted_owned_projects: {

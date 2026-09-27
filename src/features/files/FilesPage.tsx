@@ -337,7 +337,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
                 disabled={uploading}
               />
               <div className="drop-zone-content">
-                <UploadCloud size={32} style={{ color: '#2d6549', marginBottom: 4 }} />
+                <UploadCloud size={32} style={{ color: 'var(--accent)', marginBottom: 4 }} />
                 {uploading ? (
                   <div>
                     <p className="upload-primary">{uploadStatus}</p>
@@ -372,7 +372,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
           {/* Controls Bar: Search, Category Filter, Sort */}
           <div className="files-controls-bar">
             <div className="files-search-wrap">
-              <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#7a8e75', pointerEvents: 'none' }} />
+              <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
               <input
                 type="search"
                 className="files-search-input"
@@ -425,7 +425,7 @@ function FilesWorkspace({ projectId }: { projectId: string }) {
           {/* File List Table */}
           {files.length === 0 ? (
             <div className="empty-files-state">
-              <FolderArchive size={40} style={{ color: '#3d614b', margin: '0 auto 10px' }} />
+              <FolderArchive size={40} style={{ color: 'var(--accent)', margin: '0 auto 10px' }} />
               <h3>No research files uploaded yet</h3>
               <p className="muted">
                 Keep datasets, code archives, reference PDFs, and experiment outputs in one place for co-authors.

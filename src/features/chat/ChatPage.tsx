@@ -16,10 +16,14 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useAuth } from '../auth/auth-context'
+import { useProfile } from '../profile/profile-context'
+import { ProfileAvatar } from '../profile/ProfileAvatar'
 import { loadProject } from '../projects/projects-api'
 import { getTeam, type TeamMember } from '../invitations/invitations-api'
 import { ProjectTabShell } from '../../components/layout/ProjectTabShell'
 import {
+  loadProjectAvatars,
+  type ChatAvatar,
   deleteProjectMessage,
   loadProjectMessages,
   sendProjectMessage,
@@ -75,11 +79,11 @@ const CHANNELS: ChannelConfig[] = [
 ]
 
 const AVATAR_PALETTES = [
-  { bg: '#dcfce7', text: '#166534' }, // Soft sage green (SS)
-  { bg: '#fee2e2', text: '#991b1b' }, // Soft coral (AS)
-  { bg: '#e0e7ff', text: '#3730a3' }, // Soft lavender blue (DS)
-  { bg: '#fef3c7', text: '#92400e' }, // Warm amber
-  { bg: '#f3e8ff', text: '#6b21a8' }, // Soft purple
+  { bg: 'var(--avatar-green-bg, #dcfce7)', text: 'var(--avatar-green-text, #166534)' },
+  { bg: 'var(--avatar-red-bg, #fee2e2)', text: 'var(--avatar-red-text, #991b1b)' },
+  { bg: 'var(--avatar-blue-bg, #e0e7ff)', text: 'var(--avatar-blue-text, #3730a3)' },
+  { bg: 'var(--avatar-amber-bg, #fef3c7)', text: 'var(--avatar-amber-text, #92400e)' },
+  { bg: 'var(--avatar-purple-bg, #f3e8ff)', text: 'var(--avatar-purple-text, #6b21a8)' },
 ]
 
 function getAvatarColor(name: string) {
@@ -124,6 +128,13 @@ export function ChatPage() {
 
 function ChatWorkspace({ projectId }: { projectId: string }) {
   const { user } = useAuth()
+  const { profile, imageUrl } = useProfile()
+  const [avatars, setAvatars] = useState<Record<string, ChatAvatar>>({})
+  const [avatarError, setAvatarError] = useState('')
+  function renderAvatar(userId: string, name: string, size: number) {
+    const avatar = userId === user?.id && profile ? { preset: profile.avatar_preset, imageUrl } : avatars[userId]
+    return avatar ? <ProfileAvatar preset={avatar.preset} imageUrl={avatar.imageUrl} size={size} /> : getInitials(name)
+  }
   const [activeChannelId, setActiveChannelId] = useState<string>('discussion')
   const [projectData, setProjectData] = useState<Awaited<ReturnType<typeof loadProject>> | null>(null)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
@@ -169,18 +180,22 @@ function ChatWorkspace({ projectId }: { projectId: string }) {
       do {
         queued = false
         try {
-          const [proj, team, messageList] = await Promise.all([
+          const [proj, team, messageList, avatarResult] = await Promise.all([
             loadProject(projectId, controller.signal),
             getTeam(projectId, controller.signal).catch(() => []),
             loadProjectMessages(projectId, 100, controller.signal, activeChannelId),
+            loadProjectAvatars(projectId, controller.signal).then(data => ({ data, error: '' })).catch(() => ({ data: {}, error: 'Team avatars could not load. Refresh to retry.' })),
           ])
           if (controller.signal.aborted) return
+          setAvatars(avatarResult.data)
+          setAvatarError(avatarResult.error)
           setProjectData(proj)
           setTeamMembers(team)
           setMessages(messageList.filter((message) => !deleted.has(message.id)))
           setError('')
         } catch (err) {
           if (controller.signal.aborted) return
+          setAvatars({})
           setMessages([])
           setProjectData(null)
           setError(err instanceof Error ? err.message : 'Unable to load project chat.')
@@ -203,7 +218,9 @@ function ChatWorkspace({ projectId }: { projectId: string }) {
     )
     requestRefresh()
     window.addEventListener('focus', requestRefresh)
+    const avatarTimer = window.setInterval(requestRefresh, 45 * 60 * 1000)
     return () => {
+      window.clearInterval(avatarTimer)
       controller.abort()
       unsubscribe()
       window.removeEventListener('focus', requestRefresh)
@@ -359,6 +376,7 @@ function ChatWorkspace({ projectId }: { projectId: string }) {
       categoryLabel="PROJECT DISCUSSION"
       isArchived={isArchived}
     >
+      {avatarError && <p className="notice" role="status">{avatarError}</p>}
       {/* 3-Column Collaborative Grid */}
       <div className="chat-layout-grid">
             {/* Column 1: Channels Navigation */}
@@ -425,7 +443,7 @@ function ChatWorkspace({ projectId }: { projectId: string }) {
                           style={{ backgroundColor: colors.bg, color: colors.text }}
                           title={`${member.name} (${member.access_level})`}
                         >
-                          {getInitials(member.name)}
+                          {renderAvatar(member.user_id, member.name, 24)}
                         </div>
                       )
                     })}
@@ -458,7 +476,7 @@ function ChatWorkspace({ projectId }: { projectId: string }) {
                 {messages.length === 0 ? (
                   <div className="empty-chat-state">
                     <div className="empty-chat-icon-wrap">
-                      <activeChannel.icon size={36} style={{ color: '#2d6549' }} />
+                      <activeChannel.icon size={36} style={{ color: 'var(--accent)' }} />
                     </div>
                     <h3>Start the conversation</h3>
                     <p className="muted">{activeChannel.about}</p>
@@ -489,7 +507,7 @@ function ChatWorkspace({ projectId }: { projectId: string }) {
                                 style={{ backgroundColor: avatarColors.bg, color: avatarColors.text }}
                                 aria-hidden="true"
                               >
-                                {getInitials(msg.sender_name)}
+                                {renderAvatar(msg.sender_id, msg.sender_name, 34)}
                               </div>
                             )}
 
@@ -528,7 +546,7 @@ function ChatWorkspace({ projectId }: { projectId: string }) {
                                 style={{ backgroundColor: avatarColors.bg, color: avatarColors.text }}
                                 aria-hidden="true"
                               >
-                                {getInitials(msg.sender_name)}
+                                {renderAvatar(msg.sender_id, msg.sender_name, 34)}
                               </div>
                             )}
                           </div>
@@ -628,7 +646,7 @@ function ChatWorkspace({ projectId }: { projectId: string }) {
                               color: colors.text,
                             }}
                           >
-                            {getInitials(member.name)}
+                            {renderAvatar(member.user_id, member.name, 32)}
                           </div>
                           <div className="chat-member-name-area">
                             <span className="chat-member-name" title={member.name}>

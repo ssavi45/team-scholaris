@@ -170,12 +170,52 @@ Its lifecycle, recovery-window, transfer/quota, locking, stale-owner and
 cross-feature acceptance checklist lives only in [task.md](../task.md). No
 data-mutating Settings workflow tests were run for this increment.
 
+## Dark mode and theme switching (THEME-01)
+
+1. **System & Initial Load**:
+   - First visit follows OS color scheme without bright flash (`theme-init.js`).
+   - Changing OS color scheme updates the active theme when no explicit user override exists.
+   - Setting a theme persists across hard refresh and sign out.
+2. **Interactive Toggle**:
+   - Animated toggle in AppShell (including Paper) and AuthLayout transitions in 280ms, with no duplicate Paper toggle.
+   - Sun/Moon icon rotation and track sliding work on desktop and mobile.
+   - Reduced motion (`prefers-reduced-motion: reduce`) removes all transition animations.
+   - Multi-tab synchronization: toggling theme in one tab immediately updates other open tabs.
+3. **Contrast & Readability**:
+   - Run `node scripts/test-theme.mjs` for bootstrap, OS preference, storage events,
+     blocked storage, and token contrast assertions (text >=4.5:1, control borders >=3:1).
+   - Inspect actual rendered text, placeholder, focus, disabled, hover and selected
+     states in every tab; token tests alone do not establish page-level compliance.
+   - Verify inverted wordmark with no white rectangle, rounded account badge and
+     favicon corners in light/dark browser chrome. Check narrow 320px headers.
+   - Inspect chat channel names, About/quote cards, task/activity metadata, auth
+     labels, file dialogs, errors, PDF controls and compile states specifically.
+4. **Paper Workspace Isolation**:
+   - Switching theme reconfigures CodeMirror syntax highlighting without resetting document text, cursor, or undo stack.
+   - Compiled PDF pages and preview canvases strictly maintain authentic white paper background.
+
 For each delivered increment, review 375px, 768px and 1440px layouts, wide Paper,
 200% zoom, keyboard-only use, focus return, long names/text, loading/empty/error
 states and slow/offline requests. No current full accessibility audit is claimed.
 
 Before a hosted release, verify the actual migration history, backend secrets,
 Auth URLs, private storage and role isolation; test SPA direct links and compiler
-assets in the deployed build; review backups, restoration and third-party
 licenses. Resolve known release blockers and record exact evidence. Local
 success alone does not certify hosted deployment.
+
+## PROFILE-01 acceptance
+
+Automated local access checks: `node scripts/test-profile-access.mjs` (requires
+local Docker/Supabase; fixtures are rolled back). Covers generated usernames,
+profile save/stale-write rejection, saved teammate-photo visibility, draft and
+private-profile isolation, and stranger/removed-member denial.
+
+Manual checks pending:
+- Open profile from badge; edit name/username and switch email/username label;
+  save, reload and verify persistence across sign-in/devices.
+- Select each of ten presets; upload valid photos from desktop/mobile and verify
+  cropping, saved preview, navbar and chat header/message/member-list consistency.
+- Reject invalid/oversized files and duplicate usernames; retain draft on failure.
+- Check unsaved navigation/sign-out, stale saves across tabs, remove-photo and cleanup.
+- Verify teammate photo updates after refresh/focus and initials for former members.
+- Check light/dark themes, keyboard focus and 375/768/1440px layouts.

@@ -18,27 +18,42 @@ the final cascade before changing a token or copying an old declaration.
 The user-supplied leaf/book logo is the current brand artwork.
 `public/team-scholaris-icon.png` supplies the navbar and auth-page wordmark via
 `BrandLogo`; CSS frames out the mockup's outer margins without altering the image.
-`public/team-scholaris-favicon-v2.png` supplies the browser favicon with enlarged
-artwork and no outer white margins; the original `team_scholaris_favicon.png` is
-preserved as source artwork. Use the same
+`public/team-scholaris-favicon-rounded.svg` embeds the enlarged favicon PNG with
+a rounded clip and transparent corners; the original PNGs remain unchanged.
+Dark-mode wordmarks use CSS inversion/grayscale and screen blending to remove the
+white mockup backing. Limit that effect to BrandLogo; never invert research media.
+Use the same
 wordmark on the compact Paper header, replacing the earlier generated S badge.
 Keep the accessible image name and artwork proportions when adjusting sizes.
+The account identity uses the same pill shape in both themes, with theme-specific
+raised-surface, border and text tokens; compact screens reduce it to a circular badge.
 
-| Role | Current value |
-| --- | --- |
-| UI/body | Plus Jakarta Sans; system sans-serif fallback |
-| Brand and editorial headings | Newsreader; Georgia/Times serif fallback |
-| Eyebrows and supporting monospace UI | JetBrains Mono; monospace fallback |
-| Paper source editor | Cascadia Code / Consolas / monospace, 13px in SourceEditor |
-| Primary green | `#1f4331` (`--scholar-green`) |
-| Primary hover | `#173526` |
-| Pale green surface | `#f3f7f4` |
-| Standard border | `#dfe6dc` |
-| Body text / page | `#1a1a1a` / white |
-| Heading colors | `#16261a` and `#1e3524` |
-| Eyebrow | `#697c63`, uppercase, approximately .72rem, .08em tracking |
-| Focus ring | 2px `#2f6549`, 3px offset |
-| Existing destructive action | `#934137`, darker hover `#7a352d` |
+| Role | Light mode | Dark mode (`[data-theme="dark"]`) |
+| --- | --- | --- |
+| UI/body font | Plus Jakarta Sans; system sans-serif fallback | Plus Jakarta Sans; system sans-serif fallback |
+| Headings font | Newsreader; Georgia/Times serif fallback | Newsreader; Georgia/Times serif fallback |
+| Monospace / Eyebrows | JetBrains Mono; monospace fallback | JetBrains Mono; monospace fallback |
+| Paper source editor | Cascadia Code / Consolas / monospace | Cascadia Code / Consolas / monospace |
+| Page background | `#fbfdf9` (`--bg-page`) | `#101713` (`--bg-page`) |
+| Cards & panels | `#ffffff` (`--bg-surface`) | `#18221C` (`--bg-surface`) |
+| Inputs & raised surfaces | `#ffffff` / `#f7faf7` | `#1a251e` / `#202D25` (`--bg-raised`) |
+| Primary text | `#16261a` (`--text-primary`) | `#EDF3EE` (`--text-primary`) |
+| Secondary text | `#4a5c4f` (`--text-secondary`) | `#B5C3B8` (`--text-secondary`) |
+| Muted text & notes | `#697c63` (`--text-muted`) | `#a3b5a7` (`--text-muted`) |
+| Accent & links | `#1f4331` (`--accent`) | `#95D5AC` (`--accent`) |
+| Accent hover | `#173526` (`--accent-hover`) | `#b4e3c5` (`--accent-hover`) |
+| Subtle / active background | `#eaf3ed` (`--accent-light`) | `#1e3327` (`--accent-light`) |
+| Standard border | `#dfe6dc` (`--border-medium`) | `#35473c` (`--border-medium`) |
+| Focus ring | 2px `#2f6549`, 3px offset | 2px `#95D5AC`, 3px offset |
+| Destructive action | `#934137`, hover `#7a352d` | `#fca5a5`, background `#201514` |
+| Compiled PDF pages | `#ffffff` (Strict document white) | `#ffffff` (Strict document white) |
+
+`scripts/test-theme.mjs` verifies the dark primary/secondary/muted/accent/status
+text tokens against page, card, raised, input and selected surfaces: minimum
+6.24:1. The control-border token (`#718877`) has minimum 3.52:1 against those
+surfaces. These are token checks, not whole-page accessibility certification.
+`src/theme/theme-accessibility.css`, loaded after index.css, covers secondary
+states, actual feature selectors, inline avatar palettes and Paper controls.
 
 Typical heading sizes are 1.85rem for h1, 1.35rem for h2, and 1.15rem for h3;
 reuse component styles for specialized workspace headings. Font resources are
@@ -48,6 +63,13 @@ Do not convey permissions, validation, status, or danger solely through color.
 ## Layout contract
 
 - `AppShell` provides the application header and outlet.
+  The header stays sticky at the top, with forest-tinted translucent glass,
+  backdrop blur and an opaque fallback. Navigation pills link to Dashboard and,
+  inside projects, Project and Paper. Account initials come from the signed-in
+  email; do not imply presence or add inactive notification/search controls.
+  Small screens use a second navigation row and compact account/sign-out controls.
+  Paper keeps a single compact header row on small screens. Keep the header below
+  dialogs and the keyboard skip link above it; account for it in scroll offsets.
 - Every ordinary project tab uses `ProjectTabShell`: one back link, one project
   hero with status, and one tab navigation. Add new tabs to this shared shell.
   Do not copy the header into each feature or reintroduce duplicate navigation.
@@ -114,3 +136,12 @@ Review at 375px, 768px, and 1440px, plus wide desktop for Paper. Check keyboard
 navigation, dialog focus return, 200% zoom, loading/error states, and actual
 owner/member/viewer variants. These are acceptance targets, not a claim that
 every current screen has passed an accessibility audit.
+
+## Profile and avatar presentation
+
+The account pill opens the profile editor. Use themed cards and inputs, a live
+badge preview, a responsive grid of ten circular illustrated avatars and a
+single-column mobile layout. Artwork palettes stay consistent in either theme.
+Use the same saved avatar in navbar, chat header, messages and member sidebar.
+Keep initials for unavailable/former members, and a preset fallback for failed
+photo loads. Preserve accessible labels, selected states and visible focus.

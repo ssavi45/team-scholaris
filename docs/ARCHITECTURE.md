@@ -212,3 +212,14 @@ production callback configuration and release readiness are not established.
 Deployment needs SPA fallback routing, compiler static assets/MIME handling,
 Auth allowlists, backend secrets and a reviewed migration plan. Use explicit
 target selection; never assume local application of SQL changes hosted state.
+
+## Account profile implementation
+
+`src/features/profile` owns the profile editor, avatar artwork, API and provider.
+AppShell mounts a user-keyed provider; `/profile` is a protected lazy route.
+`save_account_profile` validates and serializes updates using expected timestamps;
+username generation/backfill and uniqueness are enforced by PostgreSQL.
+Private `profile-avatars` stores immutable WebP uploads; the browser re-encodes
+photos to 512px squares. `get_project_avatars` exposes only current member IDs,
+preset numbers and saved paths after project authorization. Chat obtains signed
+photo URLs in a batch and reuses ProfileAvatar, without reading private profiles.

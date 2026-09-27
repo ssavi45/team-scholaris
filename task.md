@@ -5,11 +5,89 @@ Update it for each next authorized build; preserve delivered history in
 [docs/MEMORY.md](docs/MEMORY.md) and durable decisions in
 [docs/DECISIONS.md](docs/DECISIONS.md). Do not create TASKS.md or per-build trackers.
 
-SETTINGS-01 is implemented locally. The scope below records the delivered
+## Current build: PROFILE-01 - Account profiles and shared chat avatars
+
+Status: implemented locally; browser workflow acceptance pending.
+
+- [x] Protected `/profile` route opened by the account badge.
+- [x] Generated unique email-derived usernames; editable username/display name.
+- [x] Persisted username/email badge preference, optional affiliation and bio.
+- [x] Ten illustrated avatar presets, validated photo uploads and live preview.
+- [x] Save/reload feedback, unsaved-change guard, stale-save rejection and password link.
+- [x] Private avatar storage; current teammates may read only the saved avatar.
+- [x] Same avatar in chat header, message bubbles and member sidebar; initials fallback for unavailable/former members.
+- [x] Local migrations applied; lint/build/whitespace checks passed.
+- [x] Rollback-only database checks passed for saves, stale writes and avatar access boundaries.
+- [ ] Manual browser checks for photo upload, responsive layout and cross-account chat display.
+- [ ] Apply migrations to hosted Supabase when deployment is authorized.
+
+## Previous build: THEME-01 - Readable dark mode with animated theme switch
+
+Status: implemented locally. All static checks and production builds passed;
+manual visual workflow acceptance is pending with the user.
+
+### Scope and Delivered Architecture
+
+1. **Visual Direction: Charcoal with forest-green accents**:
+   - Palette: Page `#101713`, Cards `#18221C`, Inputs `#202D25`, Text `#EDF3EE`, Secondary `#B5C3B8`, Accent `#95D5AC`.
+   - Semantic tokens defined in `:root` and `[data-theme="dark"]`.
+   - Focused dark-token tests pass: minimum text contrast 6.24:1 and control border 3.52:1. Whole-page visual acceptance remains pending.
+2. **Animated Theme Switcher (`ThemeToggle`)**:
+   - Track with 280ms cubic-bezier transition, smooth thumb slide, and icon rotation/fade.
+   - Reduced-motion media query override (`prefers-reduced-motion: reduce`).
+   - Integrated into AppShell (including Paper) and AuthLayout; duplicate Paper control removed.
+3. **Theme State & Zero-Flash Initialization**:
+   - Pre-hydration script `public/theme-init.js` sets `data-theme` and `colorScheme` before first paint.
+   - Synchronized across tabs via `window.addEventListener('storage')`.
+   - Graceful fallback for environments with blocked local storage.
+4. **App-wide Coverage & Brand Wordmark Preservation**:
+   - Dashboard, all project tabs (Overview shortcuts, Chat workbench, Files storage, Team, Tasks, Activity, Meetings, Settings), dialogs, and empty states.
+   - Overview shortcut cards given dark charcoal surface (`#18221C`), crisp borders (`#35473c`), and clear contrast hierarchy with mint green accents (`#95D5AC`).
+   - Hero banner milky white blur eliminated in dark mode via subtle emerald radial glow (`rgba(149, 213, 172, 0.07)`).
+   - Wordmark inverted with grayscale/screen blending in dark mode, preserving the original asset while removing the white backing. Account identity uses a rounded pill.
+   - Rounded SVG favicon embeds the existing PNG with transparent corners and a fresh URL.
+5. **Paper Workspace Isolation**:
+   - In-editor CodeMirror theme dynamically reconfigured via `Compartment` without editor destruction or cursor loss.
+   - Custom LaTeX syntax highlighting in dark mode, including commands/meta tokens and brighter comments/gutters (`#a3b5a7`).
+   - Strict preservation: rendered PDF canvas pages remain 100% white with original document colors.
+
+### Implementation Checklist
+
+- [x] Create theme store with `useSyncExternalStore`, storage sync, and `matchMedia` listener.
+- [x] Add anti-flash initialization script `public/theme-init.js` before React mounts.
+- [x] Define semantic light and dark CSS tokens in `src/index.css`.
+- [x] Build animated `ThemeToggle` component with accessible focus rings and touch support.
+- [x] Implement dynamic CodeMirror `Compartment` theme in `SourceEditor.tsx` with LaTeX syntax highlighting.
+- [x] Add one `ThemeToggle` to the shared main/Paper header and auth layout.
+- [x] Style all app surfaces, Overview shortcuts, dialogs, chat feeds, files table, and meetings in dark mode.
+- [x] Invert the dark-mode logo, round the account badge, and add rounded favicon corners.
+- [x] Apply the same account pill in light mode using light surface/border tokens and shared compact sizing.
+- [x] Eliminate hero wave milky white blur in dark mode.
+- [x] Preserve white background on compiled PDF pages and previews.
+- [x] Run linting and production build (`npm run lint`, `npm run build` - 0 errors, 0 warnings).
+- [x] Run focused theme preference/event/contrast checks; fix actual selector gaps across tabs.
+- [ ] User performs manual workflow and visual verification in browser.
+
+## Previous build: SETTINGS-01 - Project settings and recovery
+
+Status: implemented locally. The scope below records the delivered
 contract; manual workflow acceptance is still pending with the user.
 Google Calendar/Meet work remains paused and is not a prerequisite for Settings.
 
 ## Follow-up: supplied branding
+
+### Navbar refresh
+
+- [x] Add a sticky glass header with an opaque fallback and existing brand palette.
+- [x] Add Dashboard/Project/Paper navigation pills and a real account-initial badge.
+- [x] Keep responsive navigation, accessible icon controls and compact Paper header.
+- [x] Preserve sign-out errors, busy state and unsaved-change protection.
+- [x] Verify lint, production build and diff whitespace checks (all passed).
+- [ ] Manually review desktop/mobile appearance, scrolling and keyboard navigation.
+
+Browser verification is pending: no browser was available to connect during this change.
+
+### Logo and favicon
 
 - [x] Connect the PNG favicon and shared wordmark on navbar, Paper header and auth pages.
 - [x] Preserve the original assets; use responsive CSS framing for mockup margins.

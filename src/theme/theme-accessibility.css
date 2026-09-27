@@ -1,0 +1,126 @@
+/* Coverage for the actual feature selectors, including secondary UI states.
+   Keep document images/canvases outside theme color transformations. */
+html[data-theme="dark"] {
+  --avatar-green-bg: #203d30;
+  --avatar-green-text: #a6e2bd;
+  --avatar-red-bg: #3b2324;
+  --avatar-red-text: #ffb4ac;
+  --avatar-blue-bg: #25304c;
+  --avatar-blue-text: #b1cbff;
+  --avatar-amber-bg: #342b1f;
+  --avatar-amber-text: #f5ca87;
+  --avatar-purple-bg: #352842;
+  --avatar-purple-text: #dec0ff;
+}
+html[data-theme="dark"] :focus-visible { outline-color: var(--border-focus); }
+html[data-theme="dark"] :is(label, legend, .form-field label, .modal-card h3,
+  .chat-about-header, .chat-quote-body, .chat-channel-button.active .chat-channel-title,
+  .preview-empty h3, .paper-welcome h2) { color: var(--text-primary); }
+
+html[data-theme="dark"] :is(.divider, .status-page p, .project-about, .project-facts dt,
+  .chat-starter-tip, .chat-read-receipt, .chat-typing-row, .chat-composer-meta,
+  .chat-readonly-notice, .chat-member-status-line, .chat-about-text,
+  .activity-results-label, .activity-unavailable, .activity-empty,
+  .tasks-result-count, .task-row-meta, .task-priority, .tasks-empty, .team-you,
+  .meeting-zone, .meetings-empty p, .meeting-loading, .meeting-attendees small,
+  .meeting-people small, .settings-metadata dt, .trash-empty,
+  .engine-label, .export-heading .eyebrow, .sidebar-heading h2, .sidebar-heading > span,
+  .source-tree summary, .add-source > summary, .sidebar-footer p, .save-indicator,
+  .preview-heading h2, .preview-heading > svg, .preview-empty p, .pdf-pagination,
+  .subtle, .pdf-text p, .preview-loading, .paper-welcome p:not(.eyebrow),
+  .paper-welcome .eyebrow, .paper-project-name .eyebrow) { color: var(--text-secondary); }
+
+html[data-theme="dark"] :is(.chat-header-online-status, .chat-quote-symbol,
+  .chat-quote-author, .save-button, .preview-start, .export-status) { color: var(--accent); }
+html[data-theme="dark"] .chat-header-online-status[data-connection="connecting"] { color: var(--text-secondary); }
+html[data-theme="dark"] :is(.chat-header-online-status[data-connection="disconnected"],
+  .chat-character-count.near-limit, .save-indicator.unsaved, .export-option .export-hint,
+  .task-overdue, .task-priority-high) { color: var(--text-warning); }
+html[data-theme="dark"] :is(.form-error, .settings-field-error,
+  .settings-danger .settings-section-heading > svg, .task-delete-action,
+  .team-text-danger, .chat-delete-action:hover, .workbench-status .status-error) { color: var(--text-danger); }
+
+html[data-theme="dark"] :is(.divider::before, .divider::after,
+  .chat-header-tools-divider) { background: var(--border-medium); }
+html[data-theme="dark"] :is(.chat-quote-card, .modal-card, .overview-panel,
+  .export-loading) { background: var(--bg-surface); border-color: var(--border-medium); color: var(--text-primary); }
+html[data-theme="dark"] .modal-backdrop { background: #0009; }
+html[data-theme="dark"] :is(.chat-stack-add-btn, .chat-member-options-btn:hover,
+  .meetings-empty > span, .paper-document-icon, .preview-badge, .file-language,
+  .activity-icon-meetings) { background: var(--bg-raised); color: var(--accent); border-color: var(--border-medium); }
+html[data-theme="dark"] :is(.clear-search-btn, .chat-delete-action, .chat-member-options-btn) { color: var(--text-secondary); }
+html[data-theme="dark"] .chat-stack-add-btn:hover { background: var(--accent-light); color: var(--accent); }
+html[data-theme="dark"] .chat-readonly-notice { border-color: var(--border-medium); }
+
+/* A visible control border is stronger than a decorative card separator. */
+html[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]),
+  textarea, select, .button.secondary, .meeting-close, .header-nav-link.active,
+  .chat-composer-pill-box, .chat-sidebar-invite-btn, .file-drop-zone,
+  .theme-toggle-track) { border-color: var(--border-control); }
+html[data-theme="dark"] :is(input, textarea):disabled,
+html[data-theme="dark"] :is(.task-dialog input[readonly], .task-dialog textarea[readonly]) {
+  background: var(--bg-raised); color: var(--text-secondary);
+}
+html[data-theme="dark"] input:autofill { box-shadow: 0 0 0 1000px var(--bg-input) inset; -webkit-text-fill-color: var(--text-primary); }
+html[data-theme="dark"] input:-webkit-autofill { box-shadow: 0 0 0 1000px var(--bg-input) inset; -webkit-text-fill-color: var(--text-primary); }
+html[data-theme="dark"] input[type="checkbox"],
+html[data-theme="dark"] input[type="radio"] { accent-color: var(--accent); }
+html[data-theme="dark"] textarea.chat-composer-input:focus { border: 0; outline: none; box-shadow: none; }
+html[data-theme="dark"] .chat-composer-pill-box:focus-within { border-color: var(--border-focus); }
+
+/* Distinguish file categories and warnings without pale, glaring badge fills. */
+html[data-theme="dark"] .file-badge { background: var(--bg-raised); color: var(--text-secondary); }
+html[data-theme="dark"] .file-badge-pdf { background: #3b2324; color: var(--text-danger); }
+html[data-theme="dark"] :is(.file-badge-spreadsheet, .file-badge-data) { background: #203d30; color: #a6e2bd; }
+html[data-theme="dark"] .file-badge-code { background: #25304c; color: var(--text-info); }
+html[data-theme="dark"] .file-badge-image { background: #352842; color: #dec0ff; }
+html[data-theme="dark"] :is(.file-badge-archive, .preview-badge.outdated,
+  .warning-count, .preview-stale) { background: #342b1f; color: var(--text-warning); border-color: #806944; }
+html[data-theme="dark"] .storage-progress-fill.warning { background: var(--text-warning); }
+html[data-theme="dark"] .storage-progress-fill.danger { background: var(--text-danger); }
+html[data-theme="dark"] .compile-error { background: #342021; color: var(--text-danger); border-color: #87554f; }
+
+/* Paper: these are the real PDF.js/source workspace class names. */
+html[data-theme="dark"] :is(.pdf-controls, .pdf-text, .workbench-status) {
+  background: var(--bg-surface); color: var(--text-secondary); border-color: var(--border-medium);
+}
+html[data-theme="dark"] .preview-empty { background: var(--bg-page); }
+html[data-theme="dark"] .preview-sheet { background: var(--bg-raised); border-color: var(--border-medium); }
+html[data-theme="dark"] .preview-sheet > span { background: var(--text-muted); }
+html[data-theme="dark"] .zoom-control select { background: var(--bg-input); color: var(--text-primary); }
+html[data-theme="dark"] .compile-button.compiling { background: var(--bg-raised); color: var(--accent); }
+html[data-theme="dark"] .compile-button.compiling:hover:not(:disabled) { background: var(--bg-subtle); color: var(--accent-hover); }
+html[data-theme="dark"] .panel-resizer span { background: var(--border-control); }
+html[data-theme="dark"] :is(.panel-resizer:hover, .panel-resizer:focus-visible) { background: var(--accent-light); }
+html[data-theme="dark"] :is(.pdf-viewport, .chat-stream-body) { scrollbar-color: var(--border-control) transparent; }
+html[data-theme="dark"] .source-tree button::before { border-color: var(--text-muted); background: none; }
+html[data-theme="dark"] .source-tree button[aria-current] { border-color: var(--border-control); }
+html[data-theme="dark"] .manager-tools form { border-color: var(--border-medium); }
+html[data-theme="dark"] .compile-log { color: var(--text-secondary); }
+html[data-theme="dark"] .workbench-status .status-error .status-dot { background: var(--text-danger); }
+@media (max-width: 900px) {
+  html[data-theme="dark"] .view-switch:has(.split-option[aria-pressed=true]) button:first-child {
+    background: var(--bg-raised); color: var(--accent);
+  }
+}
+
+/* Compact identity and toggle must fit together, including 320px screens. */
+@media (max-width: 1100px) {
+  .account-identity { padding: 4px; }
+}
+@media (max-width: 740px) {
+  .header-nav { order: 3; width: 100%; }
+  .header-nav-link { flex: 1; }
+  .paper-shell .header-nav { display: none; }
+  html { scroll-padding-top: 148px; }
+}
+@media (max-width: 380px) {
+  .app-header, .paper-shell .app-header { padding-inline: 12px; gap: 8px; }
+  .app-header .brand-logo { width: 116px; }
+  .header-account { gap: 6px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  body, .auth-page, .app-header, .auth-card, .project-card {
+    transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+  }
+}

@@ -2,14 +2,14 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useBlocker } from 'react-router'
 
 // One guard per mounted page; dialogs report their dirty/busy state to the page.
-export function useSettingsGuard(dirty: boolean, busy: boolean) {
+export function useSettingsGuard(dirty: boolean, busy: boolean, subject = 'project') {
   const allowNavigation = useRef(false)
   const blocker = useBlocker(() => !allowNavigation.current && (dirty || busy))
   useEffect(() => {
     if (blocker.state !== 'blocked') return
-    if (busy || !window.confirm('Leave this page and discard unsaved changes? If a result is unconfirmed, check the project before making another change.')) blocker.reset()
+    if (busy || !window.confirm(`Leave this page and discard unsaved changes? If a result is unconfirmed, check the ${subject} before making another change.`)) blocker.reset()
     else blocker.proceed()
-  }, [blocker, busy])
+  }, [blocker, busy, subject])
   useEffect(() => {
     if (!dirty && !busy) return
     const unload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }

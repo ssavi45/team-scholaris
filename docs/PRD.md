@@ -122,3 +122,11 @@ accounts, billing, AI features, mobile apps, arbitrary permission builders,
 Kanban/subtasks/dependencies, recurring meetings, and hosted video infrastructure
 remain future possibilities, not current commitments. Cloudflare R2, Yjs, and
 self-hosted Overleaf are not part of the deployed implementation.
+
+## Account profiles (PROFILE-01)
+
+Users open their personal profile from the navbar badge, edit their display name
+and generated email-derived username, and choose username or email on the badge.
+They choose one of ten artwork avatars or upload a JPEG/PNG/WebP photo. Saved
+avatars appear in chat to current teammates. Optional bio/affiliation remain
+private. Include live preview, save/reload feedback and unsaved-change protection.

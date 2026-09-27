@@ -162,3 +162,16 @@ HTTPS and Auth callback allowlists, function secrets, dependency/vendor licensin
 backup/recovery arrangements and operator access. A frontend hosting provider,
 formal data-retention/purge policy, and production recovery runbook are not yet
 established. Expiry of the 30-day restore window is not evidence of physical deletion.
+
+## Profile and avatar access
+
+Profile fields remain owner-readable; updates go through a verified-user RPC
+with validation, unique usernames and stale-write rejection. Photo uploads use
+an owner namespace, immutable UUID paths, a private bucket, a 1 MiB stored-file
+limit and a four-object quota. The frontend checks image signatures, accepts
+JPEG/PNG/WebP up to 5 MiB and re-encodes a square WebP without source metadata.
+Backend checks stored metadata/ownership; it does not independently decode bytes.
+Current teammates may read only the saved avatar through a restricted RPC and
+Storage policy. Unrelated users and removed members cannot obtain new URLs;
+previously issued one-hour signed URLs remain usable until expiration.
+Unsaved avatar uploads, email preferences, bio and affiliation are not shared.

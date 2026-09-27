@@ -115,3 +115,11 @@ SECURITY, DECISIONS and MEMORY. Keep the only task checklist at root `task.md`.
 Use root RULES.md as the contributor/AI rulebook, with concise Cursor adapters.
 Update durable decisions when direction changes and current memory after each
 build; do not create another competing next-build or feature-task document.
+
+## PROFILE-01: Separate private profile details from shared avatars
+
+Keep the existing profiles table and name-based team identity. A personal
+username/email preference affects only the navbar badge. Private immutable
+Storage objects support uploaded photos; a narrow project-authorized RPC exposes
+saved avatar presentation to teammates without broadening profile-row reads.
+Use ten original SVG artwork presets and the same renderer across navbar/chat.

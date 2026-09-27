@@ -4,7 +4,7 @@ export function safeDestination(value: string | null): string {
   try {
     const url = new URL(value, 'https://scholaris.invalid')
     if (url.origin !== 'https://scholaris.invalid' ||
-      !(url.pathname === '/app' || /^\/project\/[A-Za-z0-9_-]+(?:\/paper)?$/.test(url.pathname))) return '/app'
+      !(url.pathname === '/app' || url.pathname === '/profile' || /^\/project\/[A-Za-z0-9_-]+(?:\/paper)?$/.test(url.pathname))) return '/app'
     return url.pathname + url.search
   } catch { return '/app' }
 }

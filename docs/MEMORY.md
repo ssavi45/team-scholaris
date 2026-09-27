@@ -1,10 +1,36 @@
 # Project memory
 
-Last updated: **2026-09-27**, after SETTINGS-01 implementation. This records the
+Last updated: **2026-09-27**, after PROFILE-01 implementation and chat-avatar integration. This records the
 local delivery and its verification boundary; manual workflow acceptance has not
 been performed by the agent.
 
 ## Current position
+
+PROFILE-01 is implemented locally: protected profile editor, generated editable
+usernames, username/email badge preference, ten artwork avatars, uploaded photos,
+private bio/affiliation, live preview and unsaved/stale-save protection. The badge
+links to `/profile`. Chat header, message and sidebar avatars reuse the saved
+profile avatar; current-user changes use the shared provider immediately.
+Teammate avatars refresh on conversation refresh, focus and a 45-minute interval.
+Former members retain initials fallback. No email/bio/affiliation is shared.
+
+Local migrations `20260927000100` and `20260927000200` applied successfully.
+Lint passes without warnings; build passes with a bundle-size advisory.
+`node scripts/test-profile-access.mjs` passes rollback-only local checks for
+username generation, profile saves, stale-write rejection, teammate access,
+private draft/profile isolation and stranger/removed-member denial. Browser
+upload/rendering acceptance and hosted migration rollout remain pending.
+
+
+The account badge now shares its pill shape and compact circular sizing across
+light and dark modes, using the existing theme surface/border/text tokens.
+
+Navbar refresh: AppShell now has a sticky glass header, active navigation pills,
+project/Paper shortcuts, and an email-initial account badge. Mobile navigation
+wraps into a second row; Paper retains its compact single-row mobile header.
+The existing sign-out and unsaved-change guards are preserved. Browser visual
+acceptance is pending because no browser was connected during implementation.
+Lint, production build and diff whitespace checks passed for this refresh.
 
 Branding update: the supplied PNG favicon is linked in index.html, and the
 shared BrandLogo component displays the supplied wordmark on application/Paper
@@ -37,9 +63,33 @@ product roadmap.
 | MEETINGS-01 | Scheduling, zones, attendees, external links, notes, cancellation and summary/history integration implemented; full manual checklist not recorded as passed |
 | MEETINGS-02 | Code and local configuration/migrations exist; browser connection fails; paused, live Google acceptance incomplete |
 | SETTINGS-01 | Settings route, owner detail/lifecycle/transfer RPCs and Dashboard Trash/recovery implemented; local migration applied; manual acceptance pending |
+| THEME-01 | Readable dark mode with animated theme switch implemented; charcoal/forest-green tokens, CodeMirror Compartment themes, and Paper isolation; manual acceptance pending |
 
 Reports of historical verification apply to that revision and environment. They
 are not evidence that the current tree or hosted deployment has just passed.
+
+## THEME-01 delivery
+
+Readable dark mode (`#101713` page, `#18221C` cards, `#202D25` raised, `#EDF3EE` text,
+`#B5C3B8` secondary, `#95D5AC` accent) is implemented across all surfaces. An animated
+sun/moon toggle switch with a 280ms cubic-bezier sliding track is placed in AppShell,
+and AuthLayout; Paper inherits the AppShell control without a duplicate. Theme state follows OS preference,
+persists in localStorage, synchronizes across browser tabs, and initializes before
+first paint via `public/theme-init.js` to eliminate bright flashes. The Paper
+workspace utilizes a dynamic CodeMirror `Compartment` to switch between light and
+dark syntax themes in place without resetting editor state or undo history, while
+compiled PDF pages strictly maintain their authentic white document background.
+Review fixes invert/screen-blend only the wordmark in dark mode, round the account
+identity into a pill, replace nonexistent theme selectors, and cover previously
+dim labels, chat sidebars, secondary metadata, dialogs, avatars and Paper controls.
+The favicon now uses a self-contained rounded SVG wrapper around the existing PNG.
+The root App keeps theme event subscriptions active on all routes. LaTeX command
+highlighting and comment/gutter contrast were improved without rebuilding editor state.
+
+Verification: lint, production build and the focused theme bootstrap/storage/event
+and token contrast checks passed. Minimum tested text contrast is 6.24:1 and control
+border contrast 3.52:1. No connected browser was available; visual acceptance,
+scrolling, mobile layout and interactive editor-state verification remain manual.
 
 ## SETTINGS-01 delivery
 
