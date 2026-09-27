@@ -8,6 +8,7 @@ import { ThemeToggle } from '../ThemeToggle'
 import { ProfileProvider } from '../../features/profile/ProfileProvider'
 import { useProfile } from '../../features/profile/profile-context'
 import { ProfileAvatar } from '../../features/profile/ProfileAvatar'
+import { hasUserRecovery, clearUserRecovery, allowUserRecovery } from '../../features/paper/draft-storage'
 
 export function AppShell() {
   const { user } = useAuth()
@@ -29,9 +30,27 @@ function WorkspaceShell() {
     if (!window.dispatchEvent(new Event('scholaris:before-sign-out', { cancelable: true }))) return
     setBusy(true); setError('')
     try {
+      try {
+        if (user && await hasUserRecovery(user.id)) {
+          if (!window.confirm('Signing out clears unsaved paper recovery copies from this browser for this account. Save or download your work first. Continue?')) return
+          window.dispatchEvent(new Event('scholaris:clear-paper-recovery'))
+          await clearUserRecovery(user.id)
+        }
+      } catch {
+        if (!window.confirm('Browser recovery storage is unavailable and could not be cleared. Sign out anyway? On a shared device, clear Scholaris site data in browser settings.')) {
+          if (user) allowUserRecovery(user.id)
+          window.dispatchEvent(new Event('scholaris:resume-paper-recovery'))
+          return
+        }
+        window.dispatchEvent(new Event('scholaris:clear-paper-recovery'))
+      }
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-    } catch { setError('Unable to sign out. Check your connection and try again.') }
+    } catch {
+      if (user) allowUserRecovery(user.id)
+      window.dispatchEvent(new Event('scholaris:resume-paper-recovery'))
+      setError('Unable to sign out or clear local recovery. Check your connection/browser storage and try again.')
+    }
     finally { setBusy(false) }
   }
   return <div className={`app-shell${paperRoute ? ' paper-shell' : ''}`}>

@@ -53,7 +53,7 @@ try {
   assert.equal(main.version, 2)
   const races = await Promise.all([save(owner, main, 'Writer A'), save(member, main, 'Writer B')])
   assert.equal(races.filter((r) => !r.error).length, 1)
-  assert.equal(races.find((r) => r.error).error.code, '40001')
+  assert.equal(races.find((r) => r.error).error.code, '40001', `Stale-save response: ${JSON.stringify(races.find(r => r.error).error)}`)
   main = races.find((r) => !r.error).data
   assert.equal(ok(await owner.from('paper_files').select('*').eq('id', main.id).single(), 'Reload persistent save').content, main.content)
   assert.ok((await save(owner, main, 'x'.repeat(524289))).error, 'File size limit enforced')

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { basicSetup } from 'codemirror'
-import { Compartment, EditorState } from '@codemirror/state'
+import { Compartment, EditorState, StateEffect } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { HighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
@@ -67,8 +67,11 @@ function themeExtensions(isDark: boolean) {
   ]
 }
 
-export function SourceEditor({ value, readOnly, onChange, onSave }: {
+export type EditorMemory = Map<string, { state: EditorState; top: number; left: number }>
+
+export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory }: {
   value: string; readOnly: boolean; onChange: (value: string) => void; onSave: () => void
+  fileId: string; memory: EditorMemory
 }) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | null>(null)
@@ -80,11 +83,10 @@ export function SourceEditor({ value, readOnly, onChange, onSave }: {
 
   const initialTheme = useRef(currentTheme)
   const initialReadOnly = useRef(readOnly)
+  const initialValue = useRef(value)
 
   useEffect(() => {
-    const editor = new EditorView({
-      parent: host.current!,
-      extensions: [
+    const extensions = [
         basicSetup,
         StreamLanguage.define(stex),
         themeCompartment.current.of(themeExtensions(initialTheme.current === 'dark')),
@@ -94,11 +96,19 @@ export function SourceEditor({ value, readOnly, onChange, onSave }: {
         EditorView.updateListener.of((update) => {
           if (update.docChanged) callbacks.current.onChange(update.state.doc.toString())
         }),
-      ],
-    })
+      ]
+    const cached = memory.get(fileId)
+    const editor = new EditorView({ parent: host.current!, state: cached?.state ?? EditorState.create({ doc: initialValue.current, extensions }) })
+    if (cached) {
+      editor.dispatch({ effects: StateEffect.reconfigure.of(extensions) })
+      editor.scrollDOM.scrollTop = cached.top; editor.scrollDOM.scrollLeft = cached.left
+    }
     view.current = editor
-    return () => { editor.destroy(); view.current = null }
-  }, [])
+    return () => {
+      memory.set(fileId, { state: editor.state, top: editor.scrollDOM.scrollTop, left: editor.scrollDOM.scrollLeft })
+      editor.destroy(); view.current = null
+    }
+  }, [fileId, memory])
 
   useEffect(() => {
     view.current?.dispatch({

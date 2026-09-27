@@ -7,9 +7,10 @@ export function downloadName(title: string, kind: 'pdf' | 'source', olderPdf = f
   return kind === 'source' ? `${safe}-source.zip` : `${safe}${olderPdf ? '-last-compiled' : ''}.pdf`
 }
 
-export function exportSources(files: SourceFile[], draft: SourceFile | null, includeDraft: boolean): SourceFile[] {
-  if (includeDraft && draft && !files.some((file) => file.path === draft.path)) throw new Error('The draft does not match a source file.')
-  const snapshot = files.map((file) => ({ path: file.path, content: includeDraft && draft?.path === file.path ? draft.content : file.content,
+export function exportSources(files: SourceFile[], draft: SourceFile | SourceFile[] | null, includeDraft: boolean): SourceFile[] {
+  const drafts = Array.isArray(draft) ? draft : draft ? [draft] : []
+  if (includeDraft && drafts.some(item => !files.some(file => file.path === item.path))) throw new Error('A draft does not match a source file.')
+  const snapshot = files.map((file) => ({ path: file.path, content: includeDraft ? drafts.find(item => item.path === file.path)?.content ?? file.content : file.content,
     ...(file.kind ? { kind: file.kind, storage_path: file.storage_path, bytes: file.bytes } : {}) }))
   // Figure bytes are loaded by the export dialog before building the archive.
   validateSources(snapshot.filter((file) => file.kind !== 'image'), null)

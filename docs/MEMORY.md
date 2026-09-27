@@ -6,6 +6,15 @@ been performed by the agent.
 
 ## Current position
 
+**Paper-first planning update:** the user has made Paper the sole product focus.
+Root `task.md` now records a code-informed user/PM review and PAPER-05 through
+PAPER-16 roadmap. Next recommended increment is PAPER-05 (durable multi-file
+recovery and safe autosave), followed by history and actionable compilation.
+This is planning only; none of those increments is implemented or accepted.
+The review did not include a new browser session. Existing paper functionality
+and historical acceptance are retained below. Google Meet remains paused.
+
+
 PROFILE-01 is implemented locally: protected profile editor, generated editable
 usernames, username/email badge preference, ten artwork avatars, uploaded photos,
 private bio/affiliation, live preview and unsaved/stale-save protection. The badge
@@ -43,8 +52,7 @@ Team Scholaris has a working local research-workspace foundation and multiple
 delivered increments. **SETTINGS-01 is implemented locally and awaiting the user's
 manual acceptance. Google Meet work remains paused by the user.**
 
-The only build tracker is [root task.md](../task.md). It contains the retained
-end-to-end Settings contract and implementation/acceptance checklist. Do not resume
+The only build tracker is [root task.md](../task.md). It contains the paper-first roadmap and retained prior delivery records. Do not resume
 Google integration or start another increment merely because it appears in the
 product roadmap.
 

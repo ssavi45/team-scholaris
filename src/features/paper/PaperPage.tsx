@@ -1,9 +1,13 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useBlocker, useParams } from 'react-router'
 import { useAuth } from '../auth/auth-context'
 import { loadProject } from '../projects/projects-api'
-import { createPaperFile, hydrateFigures, initializePaper, loadPaperSettings, loadPaperState, savePaperFile, type PaperFile } from './paper-api'
-import { SourceEditor } from './SourceEditor'
+import { createPaperFile, hydrateFigures, initializePaper, loadPaperSettings, loadPaperState, type PaperFile } from './paper-api'
+import { SourceEditor, type EditorMemory } from './SourceEditor'
+import { usePaperDrafts } from './usePaperDrafts'
+import { readRecovery, deleteRecovery, clearProjectRecovery, type RecoveryDraft } from './draft-storage'
+import { DraftPanel } from './DraftPanel'
+import { draftStatus } from './draft-utils'
 import { compilePaper, CompileError, sourceSignature, type Compilation } from './compiler'
 import type { ExportSnapshot } from './ExportDialog'
 
@@ -30,10 +34,21 @@ function FileTree({ files, selected, choose, prefix = '' }: {
 
 function PaperWorkspace({ projectId }: { projectId: string }) {
   const { user } = useAuth()
+  const userId = user?.id ?? ''
   const [project, setProject] = useState<Awaited<ReturnType<typeof loadProject>>>(null)
-  const [files, setFiles] = useState<PaperFile[]>([])
-  const [selected, setSelected] = useState<PaperFile | null>(null)
-  const [draft, setDraft] = useState('')
+  const { store, documents } = usePaperDrafts(user?.id ?? '', projectId)
+  const [serverFiles, setServerFiles] = useState<PaperFile[]>([])
+  const files = useMemo(() => serverFiles.map(file => documents[file.id]?.remote ?? documents[file.id]?.base ?? file), [serverFiles, documents])
+  const setFiles = useCallback((sources: PaperFile[]) => { store.reconcile(sources); setServerFiles(sources) }, [store])
+  const [selectedEntry, setSelected] = useState<PaperFile | null>(null)
+  const selected = selectedEntry ? documents[selectedEntry.id]?.remote ?? documents[selectedEntry.id]?.base ?? selectedEntry : null
+  const activeDocument = selected ? documents[selected.id] : undefined
+  const draft = activeDocument?.text ?? selected?.content ?? ''
+  const [editorMemory] = useState<EditorMemory>(() => new Map())
+  const [recovery, setRecovery] = useState<RecoveryDraft[]>([])
+  const [recoveryError, setRecoveryError] = useState('')
+  const [online, setOnline] = useState(navigator.onLine)
+  const setDraft = (text: string) => { if (selected) store.edit(selected.id, text) }
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
@@ -56,15 +71,41 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
   const [settings, setSettings] = useState<{ main_file: string; revision: number } | null>(null)
   const [manager, setManager] = useState(false)
   const mainFile = settings?.main_file ?? 'main.tex'
-  const dirty = selected !== null && draft !== selected.content
+  const dirty = Object.values(documents).some(document => document.text !== document.base.content)
+  const saving = Object.values(documents).some(document => document.saving)
   const access = project?.members.find((member) => member.user_id === user?.id)?.access_level
   const editable = project?.project.status === 'active' && (access === 'owner' || access === 'member')
-  const blocker = useBlocker(dirty || busy)
+  const blocker = useBlocker(dirty || busy || saving || recovery.length > 0)
   const savedSignature = useMemo(() => sourceSignature(files, mainFile), [files, mainFile])
   const stale = !!output && (dirty || output.signature !== savedSignature)
   const warningCount = (compileLog.match(/(?:LaTeX|Package [\w-]+) Warning:/g) ?? []).length
 
   useEffect(() => () => { job.current?.abort(); job.current = null }, [])
+  useEffect(() => { store.configure(!!editable, online) }, [store, editable, online])
+  // Refresh only while idle; store reconciliation retains every dirty draft.
+  useEffect(() => {
+    let active = true
+    let running = false
+    async function checkAccess() {
+      if (running || inFlight.current) return
+      running = true
+      const previous = store.getSnapshot()
+      try {
+        const data = await loadProject(projectId, new AbortController().signal)
+        const loaded = data ? await loadPaperState(projectId) : { files: [], settings: null }
+        if (!active) return
+        setProject(data); setOnline(navigator.onLine)
+        if (previous === store.getSnapshot()) { setFiles(loaded.files); setSettings(loaded.settings) }
+        if (!data) { store.revoke(); setOutput(null); setRecovery([]); editorMemory.clear(); void clearProjectRecovery(userId, projectId).catch(() => {}) }
+      } catch { if (active) setOnline(false) }
+      finally { running = false }
+    }
+    const onFocus = () => { void checkAccess() }
+    const onOffline = () => { store.configure(!!editable, false); setOnline(false) }
+    window.addEventListener('focus', onFocus); window.addEventListener('online', onFocus); window.addEventListener('offline', onOffline)
+    const timer = window.setInterval(onFocus, 30000)
+    return () => { active = false; clearInterval(timer); window.removeEventListener('focus', onFocus); window.removeEventListener('online', onFocus); window.removeEventListener('offline', onOffline) }
+  }, [projectId, store, setFiles, editable, userId, editorMemory])
 
   async function recompile() {
     if (job.current || inFlight.current || !project || !files.length) return
@@ -73,20 +114,24 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     job.current = controller; setCompiling(true); setCompileError(''); setCompileStatus(dirty ? 'Saving changes...' : 'Reading source...')
     inFlight.current = true; setBusy(true)
     try {
-      if (dirty && selected) {
-        if (!editable) throw new Error('Reload project access before compiling unsaved edits.')
-        const saved = await savePaperFile(selected, draft)
-        if (controller.signal.aborted) return
-        setSelected(saved); setFiles((items) => items.map((file) => file.id === saved.id ? saved : file))
+      if (recovery.length) throw new Error('Review recovery copies before compiling.')
+      if (dirty) {
+        if (!editable) throw new Error('Resolve or discard unsaved edits before compiling in read-only mode.')
+        await store.saveAll()
       }
+      const intended = Object.values(store.getSnapshot()).map(document => ({ id: document.base.id, text: document.text }))
       const data = await loadProject(projectId, controller.signal)
       if (!data) throw new Error('Project unavailable. Your previous preview has been cleared.')
       const loaded = await loadPaperState(projectId, controller.signal)
       const snapshot = loaded.files
       if (controller.signal.aborted) return
+      if (intended.some(item => snapshot.find(file => file.id === item.id)?.content !== item.text)) {
+        setFiles(snapshot)
+        throw new Error('Source changed before compilation. Review the refreshed files and compile again.')
+      }
       setProject(data); setFiles(snapshot); setSettings(loaded.settings)
       const current = snapshot.find((file) => file.id === selected?.id && file.kind !== 'folder') ?? snapshot.find((file) => file.path === loaded.settings?.main_file) ?? snapshot.find((file) => file.kind === 'text') ?? null
-      setSelected(current); setDraft(current?.content ?? '')
+      setSelected(current)
       inFlight.current = false; setBusy(false); preparing = false
       setCompileStatus('Loading paper figures...')
       const sources = await hydrateFigures(snapshot, controller.signal)
@@ -109,10 +154,12 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
   function cancelCompile() { job.current?.abort(); setCompileStatus('Compilation cancelled') }
   function openExport() {
     if (inFlight.current || !project || !files.length) return
+    if (Object.values(documents).some(document => document.remote === null && document.text !== document.base.content)) { setError('Download drafts of unavailable files separately before exporting.'); return }
     setExportSnapshot({
       title: project.project.name,
       files: files.map(({ path, content, kind, storage_path }) => ({ path, content, kind, storage_path })),
-      draft: dirty && selected ? { path: selected.path, content: draft } : null,
+      draft: null,
+      drafts: Object.values(documents).filter(document => document.text !== document.base.content).map(document => ({ path: document.remote?.path ?? document.base.path, content: document.text })),
       pdf: output?.pdf ?? null,
       olderPdf: stale || !!compileError || compiling,
       warnings: /Warning:/.test(output?.log ?? ''),
@@ -128,29 +175,35 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
         const sources = loaded.files
         if (controller.signal.aborted) return
         setProject(data); setFiles(sources); setSettings(loaded.settings)
+        if (data && userId) {
+          try {
+            const copies = await readRecovery(userId, projectId)
+            if (controller.signal.aborted) return
+            setRecovery(copies.filter(copy => sources.find(file => file.id === copy.base.id)?.content !== copy.text))
+          } catch { setRecoveryError('Local recovery is unavailable. Keep this tab open until saved, or download your drafts.') }
+        }
         const first = sources.find((file) => file.path === loaded.settings?.main_file) ?? sources.find((file) => file.kind === 'text') ?? null
-        setSelected(first); setDraft(first?.content ?? ''); setLoading(false)
+        setSelected(first); setLoading(false)
       } catch (cause) {
         if (!controller.signal.aborted) { setError(message(cause)); setLoading(false) }
       }
     })()
     return () => controller.abort()
-  }, [projectId, attempt])
+  }, [projectId, attempt, setFiles, userId])
   useEffect(() => {
-    if (!dirty && !busy) return
+    if (!dirty && !busy && !saving && !recovery.length) return
     const signOut = (event: Event) => {
-      if (busy || !window.confirm('Sign out and discard your unsaved paper edits?')) event.preventDefault()
+      if (busy || saving || !window.confirm('Sign out and clear all local recovery copies for this account? Download or save unsaved work first.')) event.preventDefault()
     }
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
     window.addEventListener('scholaris:before-sign-out', signOut)
     window.addEventListener('beforeunload', warn)
     return () => { window.removeEventListener('beforeunload', warn); window.removeEventListener('scholaris:before-sign-out', signOut) }
-  }, [dirty, busy])
+  }, [dirty, busy, saving, recovery.length])
 
   function choose(file: PaperFile) {
     if (inFlight.current || selected?.id === file.id) return
-    if (dirty && !window.confirm('Discard unsaved changes to this file?')) return
-    setSelected(file); setDraft(file.content); setError(''); setStatus('')
+    setSelected(file); setError(''); setStatus('')
   }
   async function perform(action: () => Promise<void>) {
     if (inFlight.current) return
@@ -159,23 +212,30 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     finally { inFlight.current = false; setBusy(false) }
   }
   function save() {
-    if (!selected || !dirty || !editable) return
-    void perform(async () => {
-      const saved = await savePaperFile(selected, draft)
-      setFiles((items) => items.map((file) => file.id === saved.id ? saved : file))
-      setSelected(saved); setStatus('Saved to your project.')
-    })
+    if (!selected || !editable) return
+    void store.save(selected.id).catch(cause => setError(message(cause)))
   }
   function reload() {
-    if (dirty && !window.confirm('Reload from the database and discard unsaved edits? Copy any edits you want to keep first.')) return
     void perform(async () => {
       const data = await loadProject(projectId, new AbortController().signal)
-      if (!data) throw new Error('Project unavailable. Your current edits have been kept.')
+      if (!data) { setProject(null); setOutput(null); store.revoke(); editorMemory.clear(); await clearProjectRecovery(userId, projectId); throw new Error('Project access is no longer available.') }
       const loaded = await loadPaperState(projectId)
-      const sources = loaded.files
-      const current = sources.find((file) => file.id === selected?.id && file.kind !== 'folder') ?? sources.find((file) => file.path === loaded.settings?.main_file) ?? sources.find((file) => file.kind === 'text') ?? null
-      setProject(data); setFiles(sources); setSettings(loaded.settings); setSelected(current); setDraft(current?.content ?? ''); setStatus('Latest source loaded.')
+      setProject(data); setFiles(loaded.files); setSettings(loaded.settings); setOnline(navigator.onLine)
+      setStatus('Server versions checked. Local drafts have been preserved.')
     })
+  }
+  async function restoreCopy(record: RecoveryDraft) {
+    try {
+      await store.recover(record)
+      await deleteRecovery(record.key)
+      setRecovery(rows => rows.filter(row => row.key !== record.key))
+      setSelected(record.base); setStatus('Recovered for review. Save when ready.')
+    } catch (cause) { setError(message(cause)) }
+  }
+  async function discardCopy(record: RecoveryDraft) {
+    if (!window.confirm('Permanently discard this recovery copy?')) return
+    try { await deleteRecovery(record.key); setRecovery(rows => rows.filter(row => row.key !== record.key)) }
+    catch (cause) { setError(message(cause)) }
   }
   return <div className="paper-workbench">
     <header className="paper-project-bar">
@@ -186,14 +246,16 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       <Link className="project-overview-link" to={`/project/${projectId}/chat`}>Project chat &#8599;</Link>
       <Link className="project-overview-link" to={`/project/${projectId}`}>Project overview &#8599;</Link>
     </header>
+    {recoveryError && <p role="alert" className="notice error-notice">{recoveryError}</p>}
     {error && <div role="alert" className="notice error-notice paper-notice">{error}</div>}
     {loading ? <div className="paper-welcome" role="status"><span className="loading-spinner" /><p>Opening your workspace...</p></div> : !project ? <div className="paper-welcome"><h2>Paper unavailable</h2><p>The project does not exist or you do not have access.</p><button className="button secondary compact-button" onClick={() => { setLoading(true); setError(''); setAttempt((value) => value + 1) }}>Try again</button></div> : <>
       {!editable && <p className="paper-readonly">{project.project.status === 'archived' ? 'Archived project' : 'Viewer access'} &middot; You can read the source and compile a preview. Editing is disabled.</p>}
+      <DraftPanel store={store} documents={documents} recovery={recovery} online={online} editable={!!editable} busy={busy || saving} restore={record => void restoreCopy(record)} discardRecovery={record => void discardCopy(record)} refresh={reload} />
       {!files.length ? <section className="paper-welcome"><div className="paper-document-icon">T<span>E</span>X</div><p className="eyebrow">A SPACE FOR YOUR NEXT IDEA</p><h2>Every paper starts with a blank page.</h2><p>Create your LaTeX source, bring your research together,<br />and see it take shape alongside a PDF preview.</p>{editable ? <button className="button primary compact-button" disabled={busy} onClick={() => void perform(async () => {
         const sources = await initializePaper(projectId); setFiles(sources)
         setSettings(await loadPaperSettings(projectId))
         const first = sources.find((file) => file.path === 'main.tex') ?? sources[0]
-        setSelected(first); setDraft(first.content)
+        setSelected(first)
       })}>{busy ? 'Creating...' : 'Create your paper'}</button> : <p>An owner or member can initialize this paper.</p>}</section> : <>
         <div className="workbench-toolbar">
           <button className="tool-button files-toggle" aria-expanded={sidebar} aria-controls="paper-file-sidebar" onClick={() => setSidebar(!sidebar)}><Icon name="files" />Files</button>
@@ -204,22 +266,22 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
         <div className={`paper-layout${sidebar ? ' files-open' : ''}`}>
           <aside id="paper-file-sidebar" className="paper-files" aria-label="Paper source files" hidden={!sidebar}>
             <div className="sidebar-heading"><h2>EXPLORER</h2><span>{files.length} files</span></div>
-            {editable && <button className="tool-button manage-files-button" disabled={busy || dirty || compiling} title={dirty ? 'Save or discard source edits before managing files.' : 'Import, upload, rename, move, or delete files'} onClick={() => void perform(async () => {
+            {editable && <button className="tool-button manage-files-button" disabled={busy || saving || dirty || compiling || recovery.length > 0} title={dirty ? 'Save or discard source edits before managing files.' : 'Import, upload, rename, move, or delete files'} onClick={() => void perform(async () => {
               const loaded = await loadPaperState(projectId)
               const current = loaded.files.find((file) => file.id === selected?.id && file.kind !== 'folder') ?? loaded.files.find((file) => file.path === loaded.settings?.main_file) ?? null
-              setFiles(loaded.files); setSettings(loaded.settings); setSelected(current); setDraft(current?.content ?? ''); setManager(true)
+              setFiles(loaded.files); setSettings(loaded.settings); setSelected(current); setManager(true)
             })}>Manage files / Import</button>}
             <FileTree files={files} selected={selected?.id} choose={(file) => { choose(file); if (window.matchMedia('(max-width: 900px)').matches && !dirty && !busy) setSidebar(false) }} />
             {editable && <details className="add-source"><summary>+ Add source file</summary><form onSubmit={(event) => {
               event.preventDefault()
-              void perform(async () => { const file = await createPaperFile(projectId, path.trim()); setFiles((items) => [...items, file].sort((a, b) => a.path.localeCompare(b.path))); setPath(''); setStatus(`Created ${file.path}.`) })
+              void perform(async () => { const file = await createPaperFile(projectId, path.trim()); setFiles([...files, file].sort((a, b) => a.path.localeCompare(b.path))); setPath(''); setStatus(`Created ${file.path}.`) })
             }}><label>File path<input value={path} onChange={(event) => setPath(event.target.value)} placeholder="sections/methods.tex" required maxLength={240} disabled={busy} /></label><button className="button secondary" disabled={busy}>Create file</button><p className="muted">Use / for folders. .tex, .bib, .sty, .cls and .txt supported.</p></form></details>}
             <div className="sidebar-footer"><span className="file-language">TEX</span><div><strong>{mainFile}</strong><p>Compilation entry point</p></div></div>
           </aside>
           <div className="paper-panels" ref={panels} data-view={viewMode} style={{ '--editor-share': `${split}%` } as CSSProperties}>
             <section className="paper-source" aria-label="Source editor">
-              <div className="paper-toolbar"><span className="file-language">{selected?.path.endsWith('.bib') ? 'BIB' : 'TEX'}</span><strong>{selected?.path}</strong><span className={`save-indicator${dirty ? ' unsaved' : ''}`} title={status} role="status">{busy ? 'Saving...' : dirty ? 'Unsaved' : 'Saved'}</span><button className="tool-button" disabled={busy} onClick={reload} title="Reload source from the database" aria-label="Reload source"><Icon name="reload" /></button>{editable && <button className="tool-button save-button" disabled={busy || !dirty} onClick={save}>Save</button>}</div>
-              {selected?.kind === 'image' ? <Suspense fallback={<p>Loading figure...</p>}><FigurePreview key={selected.storage_path} file={selected} /></Suspense> : selected && <SourceEditor key={selected.id} value={draft} onChange={setDraft} readOnly={!editable || busy} onSave={save} />}
+              <div className="paper-toolbar"><span className="file-language">{selected?.path.endsWith('.bib') ? 'BIB' : 'TEX'}</span><strong>{selected?.path}</strong><span className={`save-indicator${dirty ? ' unsaved' : ''}`} title={activeDocument?.savedAt ? `Last server save: ${new Date(activeDocument.savedAt).toLocaleString()}. ${status}` : status} role="status">{activeDocument ? draftStatus(activeDocument, online) : 'Saved'}</span><button className="tool-button" disabled={busy} onClick={reload} title="Reload source from the database" aria-label="Reload source"><Icon name="reload" /></button>{editable && <button className="tool-button save-button" disabled={busy || !dirty} onClick={save}>Save</button>}</div>
+              {selected?.kind === 'image' ? <Suspense fallback={<p>Loading figure...</p>}><FigurePreview key={selected.storage_path} file={selected} /></Suspense> : selected && <SourceEditor key={selected.id} fileId={selected.id} memory={editorMemory} value={draft} onChange={setDraft} readOnly={!editable || busy || activeDocument?.remote === null} onSave={save} />}
               <div className="editor-footer"><span>{draft.split('\n').length} lines <span className="footer-dot">&middot;</span> UTF-8</span><span>Ctrl/Cmd + S to save</span></div>
             </section>
             <div className="panel-resizer" role="separator" tabIndex={0} aria-label="Resize source and preview" aria-orientation="vertical" aria-valuemin={25} aria-valuemax={75} aria-valuenow={split}
@@ -239,7 +301,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
         <footer className="workbench-status"><span className={compileError ? 'status-error' : ''} role="status">{compiling ? <span className="loading-spinner" /> : <span className="status-dot" />}{compileStatus}</span><span>Compiles in your browser <span className="footer-dot">&middot;</span> <a href={`${import.meta.env.BASE_URL}vendor/swiftlatex/NOTICE.txt`} target="_blank" rel="noreferrer">Compiler credits</a></span></footer>
       </>}
     </>}
-    {blocker.state === 'blocked' && <LeaveDialog busy={busy} stay={() => blocker.reset()} leave={() => blocker.proceed()} />}
+    {blocker.state === 'blocked' && <LeaveDialog busy={busy || saving} stay={() => blocker.reset()} leave={() => blocker.proceed()} />}
     {exportSnapshot && <Suspense fallback={<p role="status" className="export-loading">Opening export...</p>}><ExportDialog snapshot={exportSnapshot} close={() => setExportSnapshot(null)} /></Suspense>}
     {manager && settings && <Suspense fallback={<p role="status" className="export-loading">Opening file manager...</p>}><FileManager projectId={projectId} files={files} settings={settings} close={() => setManager(false)} onBusy={(value) => { inFlight.current = value; setBusy(value) }} applied={(warning) => { setError(warning ?? ''); setManager(false); setLoading(true); setAttempt((value) => value + 1) }} /></Suspense>}
   </div>
@@ -253,6 +315,6 @@ function Icon({ name }: { name: 'files' | 'play' | 'reload' | 'document' | 'log'
 function LeaveDialog({ busy, stay, leave }: { busy: boolean; stay: () => void; leave: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => { const dialog = ref.current!; dialog.showModal(); return () => dialog.close() }, [])
-  return <dialog ref={ref} className="project-dialog" aria-labelledby="leave-title" onCancel={(event) => { event.preventDefault(); stay() }}><h2 id="leave-title">{busy ? 'Please wait for the operation to finish' : 'Leave without saving?'}</h2><p className="muted">Stay to keep editing and save your changes.</p><div className="dialog-actions"><button className="button secondary" onClick={stay} autoFocus>Stay</button><button className="button primary" disabled={busy} onClick={leave}>Discard and leave</button></div></dialog>
+  return <dialog ref={ref} className="project-dialog" aria-labelledby="leave-title" onCancel={(event) => { event.preventDefault(); stay() }}><h2 id="leave-title">{busy ? 'Please wait for the operation to finish' : 'Leave without saving?'}</h2><p className="muted">Stay to save or download your drafts. Leaving keeps completed local recovery copies on this browser, but they are not cloud saves.</p><div className="dialog-actions"><button className="button secondary" onClick={stay} autoFocus>Stay</button><button className="button primary" disabled={busy} onClick={leave}>Leave with recovery</button></div></dialog>
 }
 function message(cause: unknown) { return cause instanceof Error ? cause.message : 'Unable to complete the paper operation. Please try again.' }

@@ -1,11 +1,440 @@
-# Build tracker
+# Paper workspace roadmap and build tracker
 
-Last updated: 2026-09-27. This root `task.md` is the only build task file.
-Update it for each next authorized build; preserve delivered history in
-[docs/MEMORY.md](docs/MEMORY.md) and durable decisions in
-[docs/DECISIONS.md](docs/DECISIONS.md). Do not create TASKS.md or per-build trackers.
+Last updated: 2026-09-27. **Planning only; no new paper functionality has been implemented.**
+This is the only task tracker. Current product focus: make Paper the reason a
+research team chooses Scholaris. Previous delivery records remain below.
 
-## Current build: PROFILE-01 - Account profiles and shared chat avatars
+## Product judgment: what must earn the user's trust
+
+As a student coauthor, I want to open my paper, continue where I stopped, write
+without worrying about saving, resolve a broken citation quickly, and hand my
+supervisor a correct PDF. As the lead author, I need to recover yesterday's text
+and work alongside a teammate without overwriting them. As an advisor, I need
+to find the relevant passage and leave precise feedback without learning the UI.
+These are proposed user perspectives, not findings from interviews already run.
+
+The most important requirements, in order:
+
+1. **Do not lose or silently overwrite research.** Recover drafts, show truthful
+   save states, keep history, and make conflicts recoverable.
+2. **Produce a trustworthy paper.** Compile the intended snapshot, explain
+   failures, resolve references, and distinguish an old PDF from current output.
+3. **Keep writing uninterrupted.** Switch files without discarding text, retain
+   undo/cursor/preview position, and make navigation fast.
+4. **Make collaboration safe.** Current revision checks are useful protection,
+   but they are not simultaneous editing. Build real coediting deliberately.
+5. **Make review and submission easy.** Anchored feedback, reliable citations,
+   consistent assets and reproducible source/PDF export.
+6. **Make the interface comfortable for hours.** Compact full-width layout,
+   readable themes, keyboard access and responsive review on small screens.
+
+A beautiful shell supports these jobs; it cannot compensate for a lost draft or
+an incorrect bibliography. Do not spend the next increment on decorative UI.
+
+## Review basis and current baseline
+
+This review inspected the implementation and project documentation. It was not
+a fresh browser usability session or a claim that every existing flow passed.
+Past user-confirmed compilation/downloads remain historical evidence.
+
+| Area | Present in code | User-facing gap / next action |
+| --- | --- | --- |
+| Layout | Full-width Source/Split/PDF modes, collapsible file sidebar, pointer/keyboard splitter, light/dark editor | Layout/view state is component-local; no saved working position or focused writing mode |
+| Editing | CodeMirror basicSetup, LaTeX highlighting, line numbers, basic editor search/undo support, Ctrl/Cmd+S | One active draft; file switches prompt to discard. Editor keyed by file ID remounts, so per-file undo/selection is not retained |
+| Saving | Explicit save, expected-version RPC, leave/sign-out guards | No autosave, durable local recovery, conflict comparison or persistent draft-per-file model |
+| Compiler | Browser pdfTeX worker, three passes, BibTeX workflow, nested entry support, progress/cancel/120s timeout | Mostly raw log with warning count; no clickable issue list, documented compatibility corpus or measured cold/warm performance |
+| Preview | Single-page canvas, previous/next page, fit-relative zoom, extracted page text | No PDF search/text-selection layer, continuous reading or source/PDF mapping; keyed preview remount resets position on compile |
+| Source/assets | Nested tree, entry-point choice, staged rename/move/delete/import, PNG/JPEG figures | Management requires a dialog and saved source; renames explicitly do not rewrite references; no figure insertion assistance |
+| Citations | Editable .bib files and compiler integration | No citation/key picker, duplicate-key audit or friendly missing-entry repair; no external reference search |
+| Export | PDF and source ZIP, draft choice and stale-PDF warning | No named submission package binding source revision to PDF and validation results |
+| Team writing | Project access levels and stale-save rejection | No shared editing session, real presence, anchored comments, manuscript revision history or suggestions workflow |
+
+Evidence: [PaperPage](src/features/paper/PaperPage.tsx),
+[SourceEditor](src/features/paper/SourceEditor.tsx),
+[PdfPreview](src/features/paper/PdfPreview.tsx),
+[paper API](src/features/paper/paper-api.ts),
+[compiler](src/features/paper/compiler.ts),
+[file manager](src/features/paper/FileManager.tsx),
+[export](src/features/paper/ExportDialog.tsx).
+Do not rebuild existing imports, exports, resizing or basic editor search.
+
+## Workspace interaction contract
+
+- A compact Paper toolbar exposes file/outline navigation, source/PDF modes,
+  truthful save state, compile status, and export. Later History/Review tools
+  open on demand. Keep the document area full-width and maximize vertical space.
+- Left panel: Files / Outline / Search, with References added when implemented.
+  Center: open-file tabs and editor. Right: PDF or a deliberately opened review
+  panel; avoid squeezing every tool into simultaneous columns.
+- Issues open in a collapsible panel with error/warning counts and a raw-log tab.
+  Selecting an issue opens its file and line without losing another draft.
+- Save and compile are separate states. "Saved" means acknowledged by the server;
+  "Saved on this device" means recoverable locally. A generated PDF with unresolved
+  citations is "Compiled with warnings", not a clean submission.
+- Desktop split editing is the primary creation experience. Tablet/phone use
+  single panes with reachable actions; support quick edits and review without
+  promising desktop density on a phone. PDF paper stays white in dark mode.
+- Keep existing project navigation, roles, archive restrictions and compiler
+  isolation. No new global application redesign is required.
+
+## Build order and release gates
+
+All unchecked items are proposed work, not accepted delivery. Complete one build
+at a time; split implementation into its listed slices rather than one large PR.
+The estimates are relative scope (M/L/XL), not promised dates.
+
+| Build | Priority / size | Outcome | Dependencies |
+| --- | --- | --- | --- |
+| PAPER-05 | P0 / L | Durable drafts and safe autosave | Existing PAPER-01?04 |
+| PAPER-06 | P0 / L | Revision history and safe restore | 05 |
+| PAPER-07 | P0 / L | Reliable compilation and actionable errors | 05; history revision contract from 06 |
+| PAPER-08 | P1 / L | Fast, comfortable editing and navigation | 05, 07 issue navigation contract |
+| PAPER-09 | P1 / L | Useful PDF reader and preserved position | 07, 08 |
+| PAPER-10 | P1 / M | Citation and cross-reference assistance | 07, 08 |
+| PAPER-11 | P1 / M | Assets, file operations and starter templates | 05, 06, 08 |
+| PAPER-12 | P0 for team release / M | Prove a safe coediting architecture | 05?07; may investigate earlier without shipping |
+| PAPER-13 | P0 for team release / XL | Real simultaneous coediting | Accepted 12 decision; migrate 05/06 contracts |
+| PAPER-14 | P1 / L | Anchored review and resolution | 06, 08, 13 |
+| PAPER-15 | P1 / M | Submission checks and reproducible handoff | 06, 07, 10, 11 |
+| PAPER-16 | Release gate / M | Accessible, performant research-team pilot | 05?15 and manual acceptance |
+
+**First milestone:** 05?07 make writing recoverable and compiling understandable.
+**Individual-author beta:** 05?11 plus a scoped accessibility/performance pass.
+**Team-author beta:** add 12?15 and pass 16; do not market live coediting earlier.
+P0 means a release blocker for its milestone, not permission to bypass dependencies.
+
+## PAPER-05 ? Durable drafts and safe autosave (recommended next build)
+
+**User story:** "I can edit several files, lose my connection, or accidentally
+refresh without losing work, and I know whether teammates can see my changes."
+
+- [ ] Slice A ? Extract a per-user/project/file document store from PaperPage.
+  Track stable file ID, base version/content, local text and acknowledged version.
+  Keep drafts when switching files; retain a per-file editor state/undo/selection.
+- [ ] Slice B ? Persist recovery drafts locally (IndexedDB candidate), namespaced
+  by account and project. Restore through an explicit recovery prompt after reload;
+  never silently replace newer server work. Explain browser storage limitations.
+- [ ] Slice C ? Add debounced autosave (initial target: 1?2 seconds after typing
+  stops), serialize saves per file and coalesce changes during an in-flight save.
+  Keep Ctrl/Cmd+S as immediate save and add Save all for dirty documents.
+- [ ] Distinguish Saving, Saved, Local only/offline, Save failed and Conflict.
+  Include last acknowledged save time; typing stays responsive while saving.
+- [ ] Slice D ? Preserve base/local/server versions on a conflict. Offer comparison,
+  copy/download draft, reload after confirmation and a deliberate resolved save.
+  Never retry an old full-file write as last-write-wins.
+- [ ] Treat loss of access, archival, remote deletion and renamed files explicitly.
+  Stop unauthorized writes; retain a user-visible recovery/export path only where
+  authorized. Do not automatically send old offline edits after permission changes.
+- [ ] Define sign-out/shared-device cleanup, retention and storage-full behavior.
+  Proposed local recovery retention: seven days, with discard/clear controls;
+  purge private cached text on sign-out after warning about unacknowledged work.
+- [ ] Recompile/export identify all dirty files, not only the active one. Compilation
+  must use one coherent snapshot; a failed save must not compile an older snapshot
+  while claiming the user's latest text was included.
+
+**Touches:** PaperPage state, SourceEditor lifecycle, paper API save coordinator,
+local recovery module, relevant versioned RPCs/types and documentation. Extract
+only enough structure for these behaviors; avoid an unrelated full rewrite.
+
+**Acceptance:** Edit A and B, switch repeatedly, undo in each, reload and recover;
+disconnect/reconnect; fail storage writes; interrupt a save; edit one file in two
+sessions; demote/remove/archive during editing. No acknowledged edit disappears,
+no account sees another account's cached text, and no conflict is silently overwritten.
+**Not included:** full offline compilation, background sync after sign-out, CRDT or history UI.
+
+## PAPER-06 ? Manuscript history and restore
+
+**User story:** "Show me what changed since yesterday and let me bring back a
+paragraph or deleted chapter without destroying today's work."
+
+- [ ] Design server-authored history for content plus tree/main-file revisions,
+  with actor/time and file identity retained across renames. Do not equate a
+  per-file version integer or Activity metadata with recoverable history.
+- [ ] Add named project checkpoints and a paginated history panel; distinguish
+  automatic checkpoints from deliberate labels such as 'Advisor draft'.
+- [ ] Show source diffs and file additions/deletions; preview old text without
+  modifying the current editor. Download a selected snapshot.
+- [ ] Restore a file or project as a **new** revision, with preview and confirmation;
+  require a checkpoint before restore and preserve the current version.
+- [ ] Handle draft conflicts and atomic tree restoration, including referenced
+  figures. Historical figures cannot be cleaned up while retained history needs them.
+- [ ] Define bounded automatic snapshot frequency, retention and storage quota
+  before schema implementation; expose limits and eviction rules. Named snapshots
+  must not be silently pruned. Do not store a full project per keystroke.
+- [ ] Owner/member restore only in active projects; viewers inspect authorized
+  history. Removed users lose access; research bodies never enter Activity logs.
+
+**Acceptance:** Rename/delete/restore a chapter and figure, compare revisions,
+restore under concurrent edits, test forbidden access, and verify the resulting
+project compiles. Proposed retention values remain a design decision, not a promise.
+
+## PAPER-07 ? Compilation users can understand
+
+**User story:** "Tell me what broke, take me to it, and keep the last good PDF."
+
+- [ ] Build a repeatable fixture corpus: single/multi-file articles, nested main,
+  BibTeX, tables/math, PNG/JPEG, custom class/style, missing packages, bad syntax,
+  missing citations, non-ASCII text, cancellation and resource/network failures.
+- [ ] Bind every compile result to source/tree revision and main file. Keep the
+  last successful PDF; label compiling, cancelled, failed, stale and warnings
+  separately. A result must not overwrite newer-job state.
+- [ ] Parse actionable errors/warnings with file/line where available; group repeated
+  diagnostics and offer next/previous issue plus jump-to-source. Keep raw logs.
+  For uncertain locations, show the raw context instead of guessing a line.
+- [ ] Explain common bibliography failures: missing key, missing database/style,
+  malformed entry and unresolved references. Distinguish warnings from fatal errors.
+- [ ] Measure cold/warm compile and asset hydration. Improve caching only where
+  isolation is preserved; never leak one project's auxiliary files into another.
+- [ ] Keep cancellation/timeouts effective during preparation and engine execution.
+  Offer a deliberate clean rebuild and retry; expose dependency-download failure.
+- [ ] Publish a tested compatibility matrix: current pdfLaTeX/BibTeX path, supported
+  asset types and known limitations. Unicode/system-font, XeLaTeX/LuaLaTeX/Biber
+  support needs a separately accepted runtime/cost/security decision.
+- [ ] Optional compile-on-save only after reliable manual compilation, disabled by
+  default initially; debounce and queue at most the newest requested snapshot.
+
+**Acceptance:** Every known failure has a usable message; fixing a flagged location
+resolves its fixture; valid bibliography renders both citation and reference;
+cancelling never loses edits. Record timings and browser/device/network conditions.
+**Not included:** arbitrary shell escape or an unbudgeted server compile farm.
+
+## PAPER-08 ? An editor that stays out of the way
+
+**User story:** "Let me move around a long paper and write without repetitive clicks."
+
+- [ ] Open-file tabs with dirty/conflict markers, close/reopen actions and restored
+  cursor/scroll. Build on 05's document store rather than a second draft model.
+- [ ] Files/Outline/Search sidebar modes; outline headings across supported input
+  files, quick file switch, go-to-line and reveal current file. Handle recursive
+  inputs and macros conservatively; do not promise a complete TeX parser.
+- [ ] Expose existing find/replace; add project-wide search with path/line results.
+  Multi-file replace requires preview and version-safe apply, respecting dirty drafts.
+- [ ] LaTeX snippets and completion for common commands/environments; shortcut/help
+  menu for bold/italic, section, list, equation, comment and compile. Insert source
+  at the cursor with undo support; avoid rewriting unrelated formatting.
+- [ ] Persist font size, wrap, indentation, split ratio, sidebar and focused-writing
+  preference. Restore layout by user/device; handle small screens safely.
+- [ ] Approximate source-aware word count labelled as approximate, not a publisher's
+  authoritative count. Keep code/math/comments from inflating the obvious cases.
+
+**Acceptance:** Keyboard-only navigation across a multi-chapter fixture; project
+search opens exact results; snippets undo cleanly; switching theme/files preserves
+cursor/history; no clipping at 375/768/1440px. Advanced spellcheck is follow-up work.
+
+## PAPER-09 ? PDF reading and source navigation
+
+**User story:** "Keep me on the paragraph I am fixing when I recompile."
+
+- [ ] Preserve page/relative scroll and zoom across recompiles; clamp gracefully if
+  the document becomes shorter. Add direct page entry, real zoom labels and fit modes.
+- [ ] Add selectable/searchable PDF text, match navigation, safe links, page
+  thumbnails/outline and lazy continuous scrolling with bounded canvas memory.
+  Retain the accessible text alternative and genuine white paper in both themes.
+- [ ] Prototype source-to-PDF and PDF-to-source mapping using actual engine output.
+  Verify whether this SwiftLaTeX build can emit usable SyncTeX before committing
+  to exact mapping. Test nested mains, included files and generated bibliography.
+- [ ] Bind mappings to the compiled snapshot. Mark source/PDF differences and
+  disable or qualify stale mappings. If exact mapping is unavailable, offer
+  explicitly labelled text-search navigation, not fake SyncTeX behavior.
+- [ ] Add optional separate preview window only after its authenticated state,
+  update/disconnect and memory lifecycle are defined.
+
+**Acceptance:** Recompile while reading page 8, shrink to 3 pages, search/copy text,
+follow a citation link, zoom with keyboard, and test long-document memory use.
+Exact mapping is a gated subfeature, not a prerequisite for the improved reader.
+
+## PAPER-10 ? References that do not require guesswork
+
+**User story:** "Find a citation by author/title and insert a key that really exists."
+
+- [ ] Index existing .bib entries locally; show author/title/year/key and source file.
+  Preserve raw BibTeX, including unfamiliar fields, strings and nested braces.
+- [ ] Provide citation and label pickers at the source cursor; add completion for
+  known citation/reference keys. Show missing and duplicate keys with locations.
+- [ ] Import BibTeX with preview and duplicate-resolution choices. Rename a key only
+  after showing affected supported citation commands; flag unsupported macros.
+- [ ] Add common-entry editing and simple insertion help without making the visual
+  form the only way to edit a bibliography. Leave advanced styles in source.
+- [ ] Treat DOI lookup as a separately enabled slice: verify a provider, display
+  source/provenance, handle failure/rate limits, and let users review metadata.
+  No fabricated references or silent overwrites; manual entry always works.
+
+**Acceptance:** Reproduce the greenwade93 case, repair it through the reference UI,
+compile successfully, and verify duplicate/malformed/nested-brace fixtures.
+DOI lookup must not transmit private manuscript text; Zotero/Mendeley sync is deferred.
+
+## PAPER-11 ? Organize research assets and start quickly
+
+**User story:** "Add a figure or chapter without breaking the document."
+
+- [ ] Bring common create/rename/move actions closer to the existing tree. Add
+  searchable paths, collapsible folders and keyboard equivalents for pointer actions.
+- [ ] Preview known input/include/graphics/bibliography references before a rename;
+  offer a version-safe multi-file update for supported literal paths only. Flag
+  dynamic/macros for manual repair and preserve every draft.
+- [ ] Upload/preview figures and insert a figure snippet with caption/label/path.
+  Keep limits visible; validate collision, MIME/signature and dimensions.
+- [ ] Optionally copy an authorized General Files asset into Paper as an explicit
+  snapshot with separate quota accounting; never silently link mutable uploads.
+- [ ] Improve existing ZIP review with conflict choices, entry-point detection and
+  compatibility warnings. Imports must be recoverable using 06 checkpoints.
+- [ ] Offer a small tested starter set: blank article, research report and multi-file
+  thesis skeleton. Include working example bibliography/figure; no unlicensed
+  publisher templates or overwrite of an existing paper without confirmation.
+
+**Acceptance:** Import a supported project, rename an included chapter, insert a
+figure, undo via restore and export/reimport. Warn about unsupported formats/engines.
+PDF/SVG/EPS figure support needs an explicit conversion/compiler compatibility slice.
+
+## PAPER-12 ? Coediting architecture proof (decision gate)
+
+**User story:** "Before you call this collaborative, prove two authors cannot
+silently overwrite each other."
+
+- [ ] Compare a maintained CRDT approach (candidate: Yjs + CodeMirror binding) with
+  the current versioned-write model. Record transport, hosting cost, persistence,
+  operational complexity and migration decisions in DECISIONS before shipping.
+- [ ] Prove two authenticated clients editing the same and different files, offline
+  reconnect, duplicate/reordered messages, process restart and document hydration.
+- [ ] Design trusted room admission, membership revocation, viewer restrictions,
+  document-size limits and rate limiting. Realtime broadcast alone is not durable
+  storage and client-side readonly is not authorization.
+- [ ] Define one authoritative editing protocol; prevent old whole-file autosaves
+  from overwriting shared documents. Design migration/rollback from 05/06.
+- [ ] Define document/file IDs, rename/delete/restore semantics, checkpoint capture
+  and a coherent compile/export snapshot while teammates continue typing.
+- [ ] Measure candidate at 2 and 5 concurrent editors with representative documents.
+  Stop and report if safety or operating budget is not viable; do not fake presence.
+
+**Exit deliverable:** bounded prototype evidence, architecture decision and a
+reviewable rollout plan. The runtime/dependency/provider choice is not pre-approved
+by this roadmap. File locking may be an explicit interim mode, never labelled coediting.
+
+## PAPER-13 ? Real simultaneous writing
+
+**User story:** "My coauthor writes Methods while I fix Results; our work survives
+reconnects, and I can tell who is actually here."
+
+- [ ] Ship 12's accepted protocol behind a controlled rollout; migrate existing
+  documents without discarding old history or recovery drafts.
+- [ ] Live same-file text updates, actual participant presence/cursors/selections,
+  accessible coauthor names/avatars and optional follow collaborator mode.
+  Show presence timeout/disconnection honestly; do not infer online status from membership.
+- [ ] Local undo affects my own actions, not a teammate's entire latest edit.
+  Reconnect reconciles supported offline changes and reports rejected writes.
+- [ ] Enforce revocation/demotion/archive while a session is open; shared file tree
+  updates cannot resurrect deleted files or fork a document silently.
+- [ ] Capture coherent compile/history/export snapshots while editing continues;
+  avoid recompiling once per collaborator keystroke.
+
+**Acceptance:** Two- and five-account scenarios, conflicting edits, dropped transport,
+server restart, stale tab, renamed/deleted file, member removal and read-only viewer.
+This XL increment must ship in slices: durable session ? simultaneous text ?
+presence ? lifecycle/reconnect hardening. None substitutes for the final safety gate.
+
+## PAPER-14 ? Advisor review and anchored comments
+
+**User story:** "Leave feedback on this sentence and know whether it was addressed."
+
+- [ ] Select source text to start a threaded comment; navigate between editor and
+  thread. Resolve/reopen, filter unresolved and retain author/time attribution.
+- [ ] Use stable anchors compatible with 13; when text is deleted or an anchor
+  cannot be mapped, show detached/outdated context rather than moving it silently.
+- [ ] Define comment permissions before rollout. Default proposal: owners/members
+  comment, viewers read. Advisor commenting requires an explicit permission decision;
+  a research-role label must never grant it automatically.
+- [ ] Preserve comments through history/restore with documented anchor semantics;
+  remove access for former teammates. Avoid public review links in this increment.
+- [ ] Add suggestions/accept/reject as a later slice only after comment anchors and
+  shared editing are stable. Acceptance/rejection must be version-safe and auditable.
+
+**Acceptance:** Comment on a passage, concurrently edit/delete/move it, resolve and
+reopen a thread, restore an earlier version and verify authorization. General
+project Chat stays separate; review does not require leaving the paper workspace.
+
+## PAPER-15 ? Submission and reproducible handoff
+
+**User story:** "Give me the exact PDF and source I approved for submission."
+
+- [ ] Preflight for fatal compile errors, unresolved citations/references, missing
+  assets and placeholder/TODO text; group blocking errors vs reviewable warnings.
+  Heuristic checks must be labelled and must not claim publisher compliance.
+- [ ] Create a named submission checkpoint from one acknowledged project revision.
+  Compile that snapshot and bind PDF, entry point, engine metadata and warnings to it.
+- [ ] Export a clean source ZIP plus the matching PDF; include an optional manifest
+  with snapshot ID and checksums. Preserve draft/export choices from current code.
+- [ ] Allow clearly labelled draft export when warnings remain; do not block all
+  downloads or silently substitute an earlier successful PDF.
+- [ ] Validate export/reimport using supported projects and document reproducibility
+  limitations of downloaded package versions; do not promise byte-identical output
+  unless dependencies and toolchain are actually pinned.
+
+**Acceptance:** Download, unzip, reimport and compile the same snapshot; compare
+content/assets; verify stale PDF cannot be presented as the approved revision.
+DOCX conversion, publisher submission APIs and GitHub sync remain separate work.
+
+## PAPER-16 ? Release hardening and real-user pilot
+
+- [ ] Repeat critical flows with beginner, experienced author and advisor users;
+  record observed friction rather than invented satisfaction metrics.
+- [ ] Keyboard/screen-reader review, visible focus, contrast, non-color-only status,
+  reduced motion, touch targets and responsive controls across both themes.
+- [ ] Test current Chrome/Edge/Firefox/Safari and mobile Safari/Chrome as available;
+  report untested combinations. Verify large-paper scrolling and worker cleanup.
+- [ ] Benchmark representative 10-page article, 50-page report and ~100-page thesis
+  within existing quotas, including figures and bibliography. Use lazy rendering;
+  document measured supported limits before increasing quotas.
+- [ ] Exercise recovery, history, simultaneous edits, revocation, malicious ZIPs,
+  quota exhaustion and package-server failure. Retest access to old snapshots/assets.
+- [ ] Publish short onboarding, keyboard help, compatibility and recovery guidance.
+  Mark unsupported features explicitly rather than providing dead controls.
+
+**Proposed success targets (to measure, not current claims):**
+- No silent data loss in the recovery/concurrency test matrix.
+- A new user compiles the supplied starter within five minutes without assistance.
+- A user locates and repairs a planted missing citation within two minutes.
+- Recover a prior paragraph through History within one minute.
+- Input-to-paint p95 under 100ms on an agreed reference laptop/fixture; warm simple
+  article compile target under ten seconds. Record cold-network timings separately.
+- Two authors finish a 30-minute session including reconnect with converged saved text.
+These targets guide diagnosis; compiler/device limits must not be hidden to meet them.
+
+## Definition of done for every build
+
+- [ ] Scope/dependencies and permissions documented; follow existing security rules.
+- [ ] Source/types/backend/storage changes delivered end-to-end where needed.
+- [ ] Loading, empty, error/retry, read-only, offline/conflict states are truthful.
+- [ ] Relevant local fixture/security tests and lint/build/diff checks pass.
+- [ ] Manual happy path and the build's failure scenarios accepted; screenshots or
+  observations recorded where visual behavior matters. Static checks alone are insufficient.
+- [ ] Keep local vs hosted migration/deployment status explicit. No production
+  deployment, service subscription or external invitation is implied by this plan.
+- [ ] Update MEMORY and relevant canonical docs, then mark this build complete.
+
+## Deliberately deferred
+
+AI writing/review, generated citations, full visual/WYSIWYG editing, DOCX roundtrip,
+public paper hosting, anonymous review, Git integration, external reference-manager
+sync, publisher submission and advanced compile engines. These may be valuable,
+but recoverability, writing quality and real collaboration come first.
+Google Meet remains paused. Non-paper features receive only necessary regression fixes.
+
+## Reference points, not a feature-parity promise
+
+The roadmap is based primarily on Scholaris code and research-writing jobs.
+Official Overleaf documentation helps check established interaction expectations:
+[preview position/navigation](https://docs.overleaf.com/navigating-in-the-editor/working-with-the-pdf-viewer/pdf-viewer-options-and-navigation),
+[source/PDF mapping and limitations](https://docs.overleaf.com/navigating-in-the-editor/working-with-the-pdf-viewer/moving-between-the-editor-and-pdf),
+[history](https://docs.overleaf.com/writing-and-editing/history-and-versioning), and
+[anchored comments](https://docs.overleaf.com/collaborating/commenting).
+These references do not establish capabilities of the Scholaris engine or a
+requirement to reproduce Overleaf's complete product.
+
+## Previous delivery records
+
+The records below describe previous builds, not the next paper implementation.
+
+## Previous build: PROFILE-01 - Account profiles and shared chat avatars
 
 Status: implemented locally; browser workflow acceptance pending.
 

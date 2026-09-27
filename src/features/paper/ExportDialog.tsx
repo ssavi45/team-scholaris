@@ -7,6 +7,7 @@ export type ExportSnapshot = {
   title: string
   files: SourceFile[]
   draft: SourceFile | null
+  drafts?: SourceFile[]
   pdf: Uint8Array<ArrayBuffer> | null
   olderPdf: boolean
   warnings: boolean
@@ -15,7 +16,8 @@ export type ExportSnapshot = {
 export default function ExportDialog({ snapshot, close }: { snapshot: ExportSnapshot; close: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const job = useRef<AbortController | null>(null)
-  const [includeDraft, setIncludeDraft] = useState(!!snapshot.draft)
+  const drafts = snapshot.drafts ?? (snapshot.draft ? [snapshot.draft] : [])
+  const [includeDraft, setIncludeDraft] = useState(drafts.length > 0)
   const [acceptOlder, setAcceptOlder] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -31,7 +33,7 @@ export default function ExportDialog({ snapshot, close }: { snapshot: ExportSnap
     const controller = new AbortController()
     job.current = controller; setBusy(true); setError(''); setStatus('Preparing source ZIP...')
     try {
-      const files = exportSources(snapshot.files, snapshot.draft, includeDraft)
+      const files = exportSources(snapshot.files, drafts, includeDraft)
       const hydrated = await hydrateFigures(files, controller.signal)
       const bytes = await sourceArchive(hydrated, controller.signal)
       if (controller.signal.aborted) return
@@ -63,8 +65,8 @@ export default function ExportDialog({ snapshot, close }: { snapshot: ExportSnap
       <button className="button secondary compact-button" disabled={!snapshot.pdf || busy || (snapshot.olderPdf && !acceptOlder)} onClick={downloadPdf}>{snapshot.olderPdf ? 'Download last compiled PDF' : 'Download PDF'}</button>
     </div></section>
     <section className="export-option" aria-labelledby="export-source-title"><span className="export-format">ZIP</span><div><h3 id="export-source-title">LaTeX source</h3><p>{snapshot.files.length} entries, including sources, bibliography files, and figures, with folder paths preserved. Uses the files loaded in this workspace when you opened Export.</p>
-      {snapshot.draft && <label className="export-checkbox"><input type="checkbox" checked={includeDraft} disabled={busy} onChange={(event) => setIncludeDraft(event.target.checked)} />Include unsaved edits to {snapshot.draft.path}</label>}
-      {snapshot.draft && <p className="export-hint">{includeDraft ? 'Your draft will be included in this copy. It remains unsaved in the project.' : 'The ZIP will use the last loaded saved version of this file.'}</p>}
+      {drafts.length > 0 && <label className="export-checkbox"><input type="checkbox" checked={includeDraft} disabled={busy} onChange={(event) => setIncludeDraft(event.target.checked)} />Include unsaved edits to {drafts.length} file(s): {drafts.map(file => file.path).join(', ')}</label>}
+      {drafts.length > 0 && <p className="export-hint">{includeDraft ? 'All listed drafts are included in this copy. Export does not save them to the project.' : 'The ZIP uses the last loaded server versions of these files.'}</p>}
       <button className="button primary compact-button" disabled={busy} onClick={() => void downloadZip()}>{busy ? 'Preparing ZIP...' : 'Download source ZIP'}</button>
     </div></section>
     {error && <p role="alert" className="notice error-notice">{error}</p>}

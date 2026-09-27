@@ -30,6 +30,11 @@ export async function savePaperFile(file: PaperFile, content: string) {
   if (error) throw new Error(error.message)
   return data as PaperFile
 }
+export async function loadPaperFile(id: string) {
+  const { data, error } = await client().from('paper_files').select('*').eq('id', id).maybeSingle()
+  if (error) throw new Error(error.message)
+  return data as PaperFile | null
+}
 
 export async function loadPaperSettings(projectId: string, signal?: AbortSignal) {
   let query = client().from('paper_workspaces').select('main_file,revision').eq('project_id', projectId)
