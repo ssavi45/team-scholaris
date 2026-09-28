@@ -34,7 +34,7 @@ function MeetingsWorkspace({ projectId, userId }: { projectId: string; userId: s
   const [state, setState] = useState<{ data: Data | null; loading: boolean; error: string }>({ data: null, loading: true, error: '' })
   useEffect(() => {
     const controller = new AbortController()
-    void googleStatus(controller.signal).then((value) => { if (!controller.signal.aborted) { setConnection(value); setConnectionError('') } }).catch(() => { if (!controller.signal.aborted) { setConnection(null); setConnectionError('Could not reach the Google connection service. Check that the local functions are running.') } })
+    void googleStatus(controller.signal).then((value) => { if (!controller.signal.aborted) { setConnection(value); setConnectionError('') } }).catch((cause) => { if (!controller.signal.aborted) { setConnection(null); setConnectionError(cause instanceof Error ? cause.message : 'Could not reach the Google connection service. Check that the local functions are running.') } })
     return () => controller.abort()
   }, [connectionAttempt])
   useEffect(() => {

@@ -13,14 +13,29 @@ const base = env('SUPABASE_URL')
 const serviceKey = env('SUPABASE_SERVICE_ROLE_KEY')
 const publicKey = env('SUPABASE_ANON_KEY')
 const configured = !!(appOrigin && redirectUri && clientId && clientSecret && /^[0-9a-f]{64}$/i.test(tokenKey) && serviceKey)
-const cors = { 'Access-Control-Allow-Origin': appOrigin, 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Vary': 'Origin' }
+function matchOrigin(origin: string | null) {
+  if (!origin) return appOrigin
+  if (origin === appOrigin) return origin
+  if (appOrigin.includes('127.0.0.1:5173') && origin === 'http://localhost:5173') return origin
+  if (appOrigin.includes('localhost:5173') && origin === 'http://127.0.0.1:5173') return origin
+  return null
+}
+function corsHeaders(origin: string | null = null) {
+  return {
+    'Access-Control-Allow-Origin': matchOrigin(origin) ?? appOrigin,
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
+}
 class SafeError extends Error {}
 type Connection = { user_id: string; google_sub: string; email: string; refresh_cipher: string }
 type Meeting = { id: string; project_id: string; title: string; agenda: string; starts_at: string; ends_at: string; time_zone: string; cancelled_at: string | null }
 type Operation = { meeting_id: string; google_sub: string; event_id: string; lease_id: string; event_created: boolean }
 type CalendarEvent = { id?: string; status?: string; etag?: string; summary?: string; description?: string; start?: { dateTime?: string }; end?: { dateTime?: string }; extendedProperties?: { private?: { scholarisMeeting?: string } }; conferenceData?: { createRequest?: { status?: { statusCode?: string } }; entryPoints?: { entryPointType: string; uri: string }[] } }
-function reply(status: number, value: object, extra: Record<string, string> = {}) {
-  return new Response(JSON.stringify(value), { status, headers: { ...cors, ...extra, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
+function reply(status: number, value: object, extra: Record<string, string> = {}, origin: string | null = null) {
+  return new Response(JSON.stringify(value), { status, headers: { ...corsHeaders(origin), ...extra, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
 }
 function bytesToBase64(bytes: Uint8Array) { return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }
 function base64ToBytes(value: string) { return Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)) }
@@ -143,35 +158,36 @@ Deno.serve(async (request: Request) => {
     if (!appOrigin) return new Response('Google integration is not configured.', { status: 503 })
     return callback(request)
   }
-  if (request.headers.get('Origin') && request.headers.get('Origin') !== appOrigin) return reply(403, { error: 'Origin not allowed. Open Scholaris at its configured local address.' })
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
-  if (request.method !== 'POST') return reply(405, { error: 'POST required.' })
+  const origin = request.headers.get('Origin')
+  if (origin && !matchOrigin(origin)) return reply(403, { error: 'Origin not allowed. Open Scholaris at its configured local address.' }, {}, origin)
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(origin) })
+  if (request.method !== 'POST') return reply(405, { error: 'POST required.' }, {}, origin)
   try {
     const authorization = request.headers.get('Authorization') ?? ''
-    if (!authorization.startsWith('Bearer ')) return reply(401, { error: 'Sign in first.' })
+    if (!authorization.startsWith('Bearer ')) return reply(401, { error: 'Sign in first.' }, {}, origin)
     const userResponse = await fetch(base + '/auth/v1/user', { headers: { Authorization: authorization, apikey: publicKey }, signal: AbortSignal.timeout(15000) })
-    if (!userResponse.ok) return reply(401, { error: 'Sign in again to connect Google.' })
+    if (!userResponse.ok) return reply(401, { error: 'Sign in again to connect Google.' }, {}, origin)
     const user = await userResponse.json() as { id: string; email_confirmed_at?: string }
-    if (!user.id || !user.email_confirmed_at) return reply(403, { error: 'Verify your Scholaris email first.' })
+    if (!user.id || !user.email_confirmed_at) return reply(403, { error: 'Verify your Scholaris email first.' }, {}, origin)
     const text = await request.text()
-    if (text.length > 4096) return reply(400, { error: 'Request is too large.' })
+    if (text.length > 4096) return reply(400, { error: 'Request is too large.' }, {}, origin)
     const input = JSON.parse(text) as { action?: string; projectId?: string; meetingId?: string }
     if (input.action === 'status') {
       const account = configured ? await connection(user.id) : undefined
-      return reply(200, { configured, connected: !!account, email: account?.email ?? null })
+      return reply(200, { configured, connected: !!account, email: account?.email ?? null }, {}, origin)
     }
-    if (!configured) return reply(503, { error: 'Google Calendar is not configured on the server yet.' })
+    if (!configured) return reply(503, { error: 'Google Calendar is not configured on the server yet.' }, {}, origin)
     if (input.action === 'connect') {
-      if (!input.projectId || !uuid.test(input.projectId)) return reply(400, { error: 'Choose a project.' })
+      if (!input.projectId || !uuid.test(input.projectId)) return reply(400, { error: 'Choose a project.' }, {}, origin)
       const permission = await fetch(base + '/rest/v1/project_members?select=access_level&project_id=eq.' + input.projectId + '&user_id=eq.' + user.id, { headers: { Authorization: authorization, apikey: publicKey }, signal: AbortSignal.timeout(15000) })
-      if (!permission.ok || !(await permission.json()).some((row: { access_level: string }) => ['owner', 'member'].includes(row.access_level))) return reply(403, { error: 'Project editing access required.' })
+      if (!permission.ok || !(await permission.json()).some((row: { access_level: string }) => ['owner', 'member'].includes(row.access_level))) return reply(403, { error: 'Project editing access required.' }, {}, origin)
       const state = random(), browser = random(), verifier = random()
       await db('google_calendar_oauth_states?expires_at=lt.' + encodeURIComponent(new Date().toISOString()), 'DELETE')
       await db('google_calendar_oauth_states?user_id=eq.' + user.id, 'DELETE')
       await db('google_calendar_oauth_states', 'POST', { state_hash: await hash(state), browser_hash: await hash(browser), verifier, user_id: user.id, project_id: input.projectId })
       const url = new URL('https://accounts.google.com/o/oauth2/v2/auth')
       url.search = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri, response_type: 'code', scope: 'openid email ' + scope, access_type: 'offline', prompt: 'consent select_account', state, code_challenge: await hash(verifier), code_challenge_method: 'S256' }).toString()
-      return reply(200, { url: url.href }, { 'Set-Cookie': cookie(browser) })
+      return reply(200, { url: url.href }, { 'Set-Cookie': cookie(browser) }, origin)
     }
     if (input.action === 'disconnect') {
       // Invalidate callbacks before deleting credentials; a late token exchange
@@ -186,11 +202,11 @@ Deno.serve(async (request: Request) => {
         } catch { /* Local disconnection still removes stored authorization. */ }
       }
       await db('google_calendar_connections?user_id=eq.' + user.id, 'DELETE')
-      return reply(200, { disconnected: true, revoked })
+      return reply(200, { disconnected: true, revoked }, {}, origin)
     }
-    if (input.action === 'sync' && input.meetingId && uuid.test(input.meetingId)) return reply(200, await synchronize(user.id, input.meetingId))
-    return reply(400, { error: 'Unknown Google Calendar action.' })
+    if (input.action === 'sync' && input.meetingId && uuid.test(input.meetingId)) return reply(200, await synchronize(user.id, input.meetingId), {}, origin)
+    return reply(400, { error: 'Unknown Google Calendar action.' }, {}, origin)
   } catch (cause) {
-    return reply(400, { error: cause instanceof SafeError ? cause.message : 'The Google request could not be completed. Refresh and try again.' })
+    return reply(400, { error: cause instanceof SafeError ? cause.message : 'The Google request could not be completed. Refresh and try again.' }, {}, origin)
   }
 })

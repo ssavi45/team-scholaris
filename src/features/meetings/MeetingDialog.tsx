@@ -129,7 +129,7 @@ export function MeetingDialog({ projectId, meeting, team, userId, canManage, can
         <label>Agenda <span className="muted">Optional</span><textarea rows={4} maxLength={10000} value={draft.agenda} onChange={(e) => setDraft({ ...draft, agenda: e.target.value })} placeholder="What would you like to discuss?" /></label>
         <label>Shared notes <span className="muted">Optional</span><textarea rows={6} maxLength={20000} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} placeholder="Capture decisions and next steps for the team." /></label>
       </fieldset>
-      <p className="form-note">Visible to the project team. Attendee selection does not send invitations or calendar reminders.</p>
+      <p className="form-note">Visible to the project team. Scholaris alerts teammates when this meeting is scheduled and starting.</p>
       <div className="meeting-dialog-actions">{meeting && <button type="button" className="button secondary compact-button" disabled={busy} onClick={() => { if (!dirty || window.confirm('Discard your unsaved meeting changes?')) { setDraft(initial); setEditing(false); setError('') } }}>Back to details</button>}<button className="button primary compact-button" disabled={busy || !writable}>{busy ? provider === 'google' ? 'Saving and contacting Google…' : 'Saving…' : meeting ? 'Save changes' : instant ? 'Create meeting & get link' : 'Schedule meeting'}</button></div>
     </form> : meeting && <div className="meeting-detail">
       <div className="meeting-schedule"><CalendarDays size={23} aria-hidden="true" /><div><strong>{meetingTime(meeting.starts_at)}</strong><span>Until {meetingTime(meeting.ends_at)}</span><small>Your time · {viewerZone()}</small></div></div>

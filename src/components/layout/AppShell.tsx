@@ -9,6 +9,7 @@ import { ProfileProvider } from '../../features/profile/ProfileProvider'
 import { useProfile } from '../../features/profile/profile-context'
 import { ProfileAvatar } from '../../features/profile/ProfileAvatar'
 import { hasUserRecovery, clearUserRecovery, allowUserRecovery } from '../../features/paper/draft-storage'
+import { MeetingReminderBanner } from '../../features/meetings/MeetingReminderBanner'
 
 export function AppShell() {
   const { user } = useAuth()
@@ -86,6 +87,7 @@ function WorkspaceShell() {
         </button>
       </div>
     </header>
+    <MeetingReminderBanner />
     {error && <p className="notice error-notice" role="alert">{error}</p>}
     <main id="main-content" className="workspace" tabIndex={-1}><Outlet /></main>
   </div>

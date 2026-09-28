@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -314,6 +314,84 @@ export type Database = {
           {
             foreignKeyName: "project_messages_sender_id_fkey"
             columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_meetings: {
+        Row: {
+          agenda: string
+          attendee_ids: string[]
+          cancelled_at: string | null
+          created_at: string
+          created_by: string
+          ends_at: string
+          google_error: string | null
+          google_owner_id: string | null
+          google_status: 'pending' | 'ready' | 'error' | 'cancelled' | null
+          id: string
+          join_url: string
+          meeting_provider: 'external' | 'google'
+          notes: string
+          project_id: string
+          revision: number
+          starts_at: string
+          time_zone: string
+          updated_at: string
+        }
+        Insert: {
+          agenda?: string
+          attendee_ids?: string[]
+          cancelled_at?: string | null
+          created_at?: string
+          created_by: string
+          ends_at: string
+          google_error?: string | null
+          google_owner_id?: string | null
+          google_status?: 'pending' | 'ready' | 'error' | 'cancelled' | null
+          id?: string
+          join_url?: string
+          meeting_provider?: 'external' | 'google'
+          notes?: string
+          project_id: string
+          revision?: number
+          starts_at: string
+          time_zone: string
+          updated_at?: string
+        }
+        Update: {
+          agenda?: string
+          attendee_ids?: string[]
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string
+          ends_at?: string
+          google_error?: string | null
+          google_owner_id?: string | null
+          google_status?: 'pending' | 'ready' | 'error' | 'cancelled' | null
+          id?: string
+          join_url?: string
+          meeting_provider?: 'external' | 'google'
+          notes?: string
+          project_id?: string
+          revision?: number
+          starts_at?: string
+          time_zone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_meetings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_meetings_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
