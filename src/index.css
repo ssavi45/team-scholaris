@@ -243,7 +243,7 @@ html { scroll-padding-top: 100px; }
 .muted { color: #737373; font-size: .875rem; line-height: 1.6; }
 .page-heading, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .page-heading .muted { margin-top: 8px; }
-.compact-button { width: auto; flex-shrink: 0; }
+.compact-button { width: auto; flex-shrink: 0; margin-top: 0 !important; }
 .project-section { margin-top: 36px; }
 .project-section .empty-state { margin-top: 16px; }
 .project-grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; margin-top: 16px; }
@@ -2015,6 +2015,7 @@ select { border: 1px solid #dedede; border-radius: 6px; padding: 10px; min-heigh
 }
 .meetings-heading, .meetings-toolbar, .meeting-dialog-heading { justify-content: space-between; }
 .meetings-heading { flex-wrap: wrap; margin-bottom: 24px; }
+.meetings-heading-actions .button, .meeting-dialog-actions .button { margin: 0 !important; }
 .meetings-heading h2 { margin: 4px 0 8px; font-size: 30px; }
 .meetings-heading p { margin-bottom: 0; }
 .meetings-panel { border: 1px solid #dfe6dc; border-radius: 16px; background: white; overflow: hidden; }
@@ -2079,9 +2080,10 @@ select { border: 1px solid #dedede; border-radius: 6px; padding: 10px; min-heigh
 .google-connection > svg { flex-shrink: 0; }
 .google-connection-copy { min-width: 0; flex: 1; }
 .google-connection-copy strong { font-size: 14px; }
-.google-connection-copy p { font-size: 12px; line-height: 1.7; margin: 4px 0 0; overflow-wrap: anywhere; }
-.google-connection-actions, .meeting-instant-action { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.google-connection-actions, .meeting-instant-action { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.google-connection-actions .button, .meeting-instant-action .button { margin: 0 !important; }
 .meeting-instant-action { margin-bottom: 22px; }
+.meeting-instant-action .form-note { margin: 0 !important; display: inline-flex; align-items: center; line-height: 1.4; }
 @media (max-width: 700px) {
   .google-connection { flex-wrap: wrap; align-items: flex-start; }
   .google-connection-actions { width: 100%; }
@@ -3471,20 +3473,25 @@ html[data-theme="dark"] .figure-preview {
 .meeting-reminder-info {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
   flex: 1;
 }
 .meeting-pulse-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 4px 10px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0 10px;
   border-radius: 99px;
   font-size: 11px;
   font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
   letter-spacing: .02em;
+  box-sizing: border-box;
 }
 .meeting-pulse-pill.pulse-live {
   background: #e6f9ed;
@@ -3495,10 +3502,12 @@ html[data-theme="dark"] .figure-preview {
   color: #92400e;
 }
 .meeting-pulse-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: currentColor;
+  flex-shrink: 0;
+  display: block;
   animation: meeting-pulse-anim 1.8s infinite ease-in-out;
 }
 @keyframes meeting-pulse-anim {
@@ -3507,18 +3516,24 @@ html[data-theme="dark"] .figure-preview {
   100% { transform: scale(0.9); opacity: 0.8; }
 }
 .meeting-reminder-text {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
-  flex-wrap: wrap;
+  line-height: 1;
 }
 .meeting-reminder-title {
   color: var(--text-primary);
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin: 0;
 }
 .meeting-reminder-time {
   display: inline-flex;
@@ -3526,6 +3541,14 @@ html[data-theme="dark"] .figure-preview {
   gap: 5px;
   color: var(--text-secondary);
   font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  margin: 0;
+  height: 24px;
+}
+.meeting-reminder-time svg {
+  display: block;
+  flex-shrink: 0;
 }
 .meeting-reminder-actions {
   display: flex;
@@ -3533,40 +3556,46 @@ html[data-theme="dark"] .figure-preview {
   gap: 8px;
   flex-shrink: 0;
 }
+.meeting-reminder-actions .button,
+.meeting-reminder-actions .meeting-dismiss-btn {
+  margin: 0 !important;
+  box-sizing: border-box;
+}
 .meeting-reminder-actions .button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.meeting-bell-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 10px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 13px;
+  font-size: 13px;
+  font-weight: 550;
   border-radius: 6px;
-  border: 1px solid var(--border-medium);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1;
 }
-.meeting-bell-btn:hover {
-  background: var(--bg-subtle);
-  color: var(--text-primary);
+.meeting-reminder-actions .button:hover:not(:disabled) {
+  transform: none;
 }
-.meeting-dismiss-btn {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
+.meeting-reminder-actions .button:active:not(:disabled) {
+  transform: none;
+}
+.meeting-reminder-actions .meeting-dismiss-btn {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
   padding: 0;
   border-radius: 6px;
-  border: 0;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
-.meeting-dismiss-btn:hover {
+.meeting-reminder-actions .meeting-dismiss-btn:hover {
   background: var(--bg-subtle);
   color: var(--text-primary);
 }

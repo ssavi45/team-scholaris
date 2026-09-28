@@ -57,7 +57,7 @@ export function MeetingReminderBanner() {
               {notificationPermission === 'default' && (
                 <button
                   type="button"
-                  className="meeting-bell-btn"
+                  className="button secondary compact-button meeting-bell-btn"
                   onClick={() => void requestNotificationPermission()}
                   title="Turn on desktop notifications for meeting alerts"
                 >

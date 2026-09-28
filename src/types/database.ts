@@ -339,6 +339,7 @@ export type Database = {
           revision: number
           starts_at: string
           time_zone: string
+          title: string
           updated_at: string
         }
         Insert: {
