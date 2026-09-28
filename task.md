@@ -1,8 +1,28 @@
 # Paper workspace roadmap and build tracker
 
-Last updated: 2026-09-27. **Planning only; no new paper functionality has been implemented.**
+Last updated: 2026-09-28. **Paper layout rebuild implemented; manual visual acceptance pending.**
 This is the only task tracker. Current product focus: make Paper the reason a
 research team chooses Scholaris. Previous delivery records remain below.
+
+## Current build: dedicated Paper writing environment
+
+- [x] Opaque global header with internal vertical padding plus one compact project bar; remove scattered links.
+- [x] Explorer / Editor / PDF with two keyboard/pointer resize handles and explorer collapse.
+- [x] Searchable folder tree, file icons, selection, hover actions and file context actions.
+- [x] Add menu opens source/folder creation, upload/import and revision-checked file management.
+- [x] Document tabs preserve per-file drafts and editor state; closing a tab does not discard work.
+- [x] Compact autosave state; draft/recovery information disclosed except when attention is needed.
+- [x] Compile/dropdown settings/export/log in the PDF header; icon layout controls.
+- [x] PDF page input, zoom, width/page fit, rotation, text search and viewport full screen.
+- [x] Editor distraction-free mode; Escape and explicit exit restore ordinary layout.
+- [x] Real project-member avatars and team link without claiming live presence.
+- [x] Theme-aware pane contrast and quieter diagnostics/credits.
+- [ ] Manual light/dark, mobile, keyboard and end-to-end interaction acceptance.
+- [ ] Future: live collaborator cursors and anchored comments (not part of this UI build).
+
+PAPER-05 draft/autosave code is present. The original baseline review below predates
+that implementation. PAPER-06 history remains the next functional increment after
+acceptance of this layout; no inactive History control is added.
 
 ## Product judgment: what must earn the user's trust
 

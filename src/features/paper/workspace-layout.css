@@ -1,0 +1,123 @@
+/* Paper is a writing surface, separate from the dashboard's glass/card styles. */
+.app-shell.paper-shell > .app-header { height: auto; min-height: 56px; padding: 10px 20px; background: var(--bg-surface); backdrop-filter: none; box-shadow: none; }
+.app-shell.paper-shell .app-header .brand-logo { width: 126px; }
+.paper-studio { --studio-chrome: #f8faf7; --studio-canvas: #e5ebe6; color: var(--text-primary); }
+html[data-theme="dark"] .paper-studio { --studio-chrome: #1b2720; --studio-canvas: #0d1410; }
+.paper-studio button, .paper-studio summary { cursor: pointer; }
+.paper-studio button:disabled { cursor: not-allowed; opacity: .5; }
+.paper-studio .tool-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 5px 8px; font-size: 12px; color: var(--text-secondary); border-radius: 5px; white-space: nowrap; }
+.paper-studio .tool-button:hover:not(:disabled), .paper-studio button[aria-pressed=true] { background: var(--accent-light); color: var(--accent); }
+.paper-studio :is(button, a, summary, input, select):focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.paper-project-compact { display: flex; align-items: center; gap: 12px; min-height: 60px; flex-shrink: 0; margin-top: 0; padding: 10px 14px; border-bottom: 1px solid var(--border-medium); background: var(--studio-chrome); }
+.paper-studio .paper-back-button { width: 36px; height: 36px; flex: 0 0 36px; padding: 0; border: 1px solid var(--border-medium); border-radius: 10px; background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 2px #0000000d; }
+.paper-studio .paper-back-button:hover { border-color: var(--accent); background: var(--accent-light); }
+.paper-studio .paper-export-button { padding-inline: 12px; border: 1px solid var(--border-medium); border-radius: 6px; background: var(--bg-surface); color: var(--text-primary); font-weight: 600; }
+.paper-project-compact h1 { font-size: 18px; line-height: 1.25; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; }
+.paper-permission { font-size: 10px; padding: 4px 8px; border-radius: 99px; background: var(--accent-light); color: var(--accent); white-space: nowrap; }
+.paper-project-compact .paper-save-state { margin-left: auto; font-size: 11px; }
+.paper-save-state.needs-attention { border: 1px solid var(--border-control); }
+.paper-layout-controls { display: flex; border-left: 1px solid var(--border-medium); padding-left: 6px; gap: 2px; }
+.paper-collaborators { display: flex; align-items: center; gap: 5px; flex-shrink: 0; color: var(--text-secondary); font-size: 11px; }
+.paper-collaborators > span:not(.paper-team-label) { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); outline: 2px solid var(--studio-chrome); margin-right: -9px; }
+.paper-collaborators > svg { margin-left: 8px; }
+.paper-popover { position: relative; }
+.paper-popover > summary { list-style: none; display: flex; align-items: center; justify-content: center; min-width: 30px; min-height: 32px; color: var(--text-secondary); border-radius: 5px; }
+.paper-popover > summary::-webkit-details-marker { display: none; }
+.paper-popover > div { position: absolute; top: calc(100% + 4px); right: 0; width: 245px; z-index: 35; display: grid; padding: 8px; border: 1px solid var(--border-medium); border-radius: 7px; background: var(--bg-surface); box-shadow: 0 5px 18px #0002; color: var(--text-primary); }
+.paper-popover :is(a, button), .paper-file-context button { display: flex; gap: 8px; padding: 9px; text-align: left; font-size: 12px; color: var(--text-primary); border-radius: 4px; }
+.paper-popover :is(a, button):hover { background: var(--accent-light); }
+.paper-popover p { font-size: 12px; line-height: 1.5; padding: 6px; overflow-wrap: anywhere; }
+.paper-save-drawer { flex-shrink: 0; max-height: 35dvh; overflow: auto; border-bottom: 1px solid var(--border-medium); }
+.paper-save-drawer[hidden] { display: none; }
+.paper-studio .paper-files { width: var(--explorer-width); flex: 0 0 var(--explorer-width); padding: 0; overflow: visible; background: var(--studio-chrome); border: 0; }
+.paper-studio .paper-files[hidden] { display: none; }
+.paper-pane-title { display: flex; align-items: center; gap: 5px; height: 42px; padding: 4px 10px; flex-shrink: 0; border-bottom: 1px solid var(--border-medium); font-size: 12px; }
+.paper-pane-title > strong { flex: 1; }
+.paper-add > div { left: 0; right: auto; }
+.paper-file-filter { display: flex; align-items: center; gap: 7px; margin: 10px; border: 1px solid var(--border-medium); border-radius: 5px; padding-left: 8px; color: var(--text-muted); }
+.paper-studio .paper-file-filter input { border: 0; background: transparent; min-width: 0; width: 100%; min-height: 32px; padding: 5px; font-size: 12px; color: var(--text-primary); }
+.paper-tree-scroll { flex: 1; min-height: 0; overflow: auto; padding: 0 6px; }
+.paper-tree { list-style: none; margin: 0; padding: 0; font-size: 12px; }
+.paper-tree .paper-tree { padding-left: 14px; border-left: 1px solid var(--border-medium); margin-left: 8px; }
+.paper-tree summary { padding: 8px 5px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.paper-tree summary svg { display: inline; vertical-align: middle; margin-right: 7px; }
+.paper-folder-more { float: right; padding: 2px; opacity: 0; }
+.paper-tree summary:hover .paper-folder-more, .paper-tree summary:focus-within .paper-folder-more { opacity: 1; }
+.paper-tree-row { display: flex; align-items: center; border-radius: 4px; }
+.paper-tree-row:hover { background: var(--bg-raised); }
+.paper-tree-row.selected { background: var(--accent-light); color: var(--accent); }
+.paper-file-choice { display: flex; gap: 7px; align-items: center; min-width: 0; flex: 1; padding: 8px 5px; text-align: left; }
+.paper-file-choice > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.paper-file-choice svg { flex-shrink: 0; }
+.paper-file-more { padding: 6px 3px; opacity: 0; }
+.paper-tree-row:hover .paper-file-more, .paper-tree-row:focus-within .paper-file-more { opacity: 1; }
+.main-marker { font-size: 9px; opacity: .8; margin-left: auto; }
+.paper-file-context { display: grid; padding: 6px; background: var(--bg-surface); border: 1px solid var(--border-medium); border-radius: 5px; }
+.paper-file-context strong { padding: 5px; font-size: 10px; overflow-wrap: anywhere; }
+.paper-entry { display: flex; gap: 7px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--border-medium); font-size: 10px; color: var(--text-muted); }
+.paper-entry span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.paper-explorer-hint { font-size: 10px; padding: 8px 12px; color: var(--text-muted); }
+.explorer-resizer { width: 5px; flex: 0 0 5px; cursor: col-resize; touch-action: none; border-inline: 1px solid var(--border-medium); background: var(--bg-subtle); }
+.paper-studio .panel-resizer { background: var(--bg-subtle); border-color: var(--border-medium); }
+.paper-studio :is(.explorer-resizer, .panel-resizer):is(:hover, :focus-visible) { background: var(--accent-light); outline: 1px solid var(--accent); }
+.paper-document-tabs { display: flex; align-items: stretch; flex-shrink: 0; min-height: 42px; overflow-x: auto; background: var(--studio-chrome); border-bottom: 1px solid var(--border-medium); }
+.paper-document-tab { display: flex; flex: 0 0 auto; border-right: 1px solid var(--border-medium); border-bottom: 2px solid transparent; max-width: 240px; color: var(--text-secondary); }
+.paper-document-tab.active { background: var(--bg-surface); color: var(--accent); border-bottom-color: var(--accent); }
+.paper-document-tab button { display: flex; gap: 7px; align-items: center; padding: 8px 9px; font-size: 12px; white-space: nowrap; }
+.paper-document-tab button:first-child { overflow: hidden; text-overflow: ellipsis; }
+.paper-document-tabs > .tool-button { margin-left: auto; flex-shrink: 0; position: sticky; right: 0; background: var(--studio-chrome); }
+.paper-source-actions { border-bottom: 1px solid var(--border-medium); background: var(--studio-chrome); display: flex; justify-content: flex-end; }
+.paper-editor-empty { padding: 28px; flex: 1; color: var(--text-muted); font-size: 13px; }
+.paper-studio .preview-heading { min-height: 42px; height: auto; flex: 0 0 auto; padding: 4px 10px; gap: 7px; background: var(--studio-chrome); border-color: var(--border-medium); position: relative; z-index: 4; overflow: visible; }
+.paper-studio .preview-heading h2 { color: var(--text-primary); font-family: inherit; font-size: 12px; font-weight: 600; }
+.paper-studio .preview-badge { margin-right: auto; font-size: 9px; }
+.paper-compile-group { display: flex; align-items: center; flex-shrink: 0; }
+.paper-studio .compile-button { min-height: 32px; padding: 5px 10px; font-size: 12px; border-radius: 5px 0 0 5px; gap: 6px; }
+.paper-compile-group > details > summary { background: var(--accent); color: var(--bg-surface); border-left: 1px solid #ffffff40; border-radius: 0 5px 5px 0; }
+.paper-studio .paper-preview { overflow: visible; }
+.paper-studio .pdf-controls { justify-content: center; gap: 3px; padding: 4px 8px; min-height: 40px; flex-wrap: wrap; background: var(--studio-chrome); border-color: var(--border-medium); }
+.paper-studio .pdf-controls :is(input, select) { min-height: 28px; height: 28px; padding: 3px 5px; border: 1px solid var(--border-medium); border-radius: 4px; font-size: 11px; background: var(--bg-surface); color: var(--text-primary); }
+.paper-studio .pdf-page-number { width: 42px; }
+.paper-studio .pdf-controls select { width: 90px; }
+.pdf-page-count { font-size: 11px; color: var(--text-secondary); }
+.paper-studio .pdf-viewport { background: var(--studio-canvas); padding: 20px; }
+.paper-studio .pdf-viewport canvas { margin-inline: auto; }
+.paper-studio .pdf-text { font-size: 10px; padding: 5px 12px; background: var(--studio-chrome); color: var(--text-muted); }
+.pdf-search { padding: 8px; background: var(--bg-surface); border-bottom: 1px solid var(--border-medium); }
+.pdf-search > div:first-child { display: flex; gap: 6px; }
+.pdf-search label { flex: 1; }
+.pdf-search input { min-height: 32px; font-size: 12px; width: 100%; }
+.pdf-search-results { max-height: 160px; overflow: auto; font-size: 12px; padding: 6px; }
+.pdf-search-results button { display: block; width: 100%; padding: 8px; text-align: left; border-bottom: 1px solid var(--border-medium); line-height: 1.5; }
+.paper-studio .editor-footer { padding: 5px 12px; color: var(--text-muted); background: var(--studio-chrome); }
+.paper-studio .compile-log { flex: 0 1 190px; }
+.paper-studio .compile-log p { font-size: 11px; margin: 4px 0; }
+.paper-studio.paper-focused { position: fixed; inset: 0; width: 100%; height: 100dvh; z-index: 60; background: var(--bg-surface); }
+.paper-writing-focus .paper-shell > .app-header { display: none; }
+@media (max-width: 1150px) {
+  .paper-project-compact { gap: 6px; }
+  .paper-permission, .paper-team-label { display: none; }
+  .paper-collaborators > span:not(.paper-team-label):nth-child(n+3) { display: none; }
+  .paper-studio .preview-heading { flex-wrap: wrap; }
+}
+@media (max-width: 900px) {
+  .paper-project-compact { flex-wrap: wrap; margin-top: 0; padding: 8px 10px; }
+  .paper-project-compact h1 { flex: 1; max-width: calc(100% - 140px); font-size: 16px; }
+  .paper-project-compact .paper-save-state { margin-left: 0; }
+  .paper-layout-controls { margin-left: auto; }
+  .paper-layout-controls .studio-split { display: none; }
+  .paper-studio .paper-files { position: absolute; top: 0; bottom: 0; width: min(280px, 85vw); z-index: 15; box-shadow: 6px 0 18px #0002; }
+  .explorer-resizer { display: none; }
+  .paper-file-more, .paper-folder-more { opacity: 1; }
+  .paper-add > div { left: auto; right: -35px; width: 230px; }
+  .paper-studio .preview-heading { flex-wrap: nowrap; }
+}
+@media (max-width: 420px) {
+  .paper-project-compact .paper-collaborators { display: none; }
+  .paper-studio .preview-heading { gap: 4px; padding-inline: 5px; flex-wrap: wrap; }
+  .paper-studio .pdf-controls .tool-button { padding-inline: 5px; }
+  .paper-project-actions > div { width: 215px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .paper-studio button { transition: background-color 100ms ease; }
+}

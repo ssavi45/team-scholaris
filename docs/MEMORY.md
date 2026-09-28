@@ -1,19 +1,37 @@
 # Project memory
 
-Last updated: **2026-09-27**, after PROFILE-01 implementation and chat-avatar integration. This records the
-local delivery and its verification boundary; manual workflow acceptance has not
-been performed by the agent.
+Last updated: **2026-09-28**, after the requested Paper layout rebuild.
 
 ## Current position
 
-**Paper-first planning update:** the user has made Paper the sole product focus.
-Root `task.md` now records a code-informed user/PM review and PAPER-05 through
-PAPER-16 roadmap. Next recommended increment is PAPER-05 (durable multi-file
-recovery and safe autosave), followed by history and actionable compilation.
-This is planning only; none of those increments is implemented or accepted.
-The review did not include a new browser session. Existing paper functionality
-and historical acceptance are retained below. Google Meet remains paused.
+Paper polish: the navbar uses content-driven height with 10px internal vertical
+padding so the navigation/profile pills clear its bottom border. There is no
+external gap above the project bar. The rounded back button and labeled Export
+button use the existing light/dark theme tokens.
 
+The user reverted the earlier UI pass. This rebuild starts from that reverted
+baseline while preserving PAPER-05's per-file autosave, recovery and conflict
+handling. Paper now has a compact opaque app header and a compact project bar;
+project links live in its actions menu. Explorer/Editor/PDF fill the remaining
+viewport with draggable and keyboard-accessible dividers. File tabs retain
+underlying drafts when closed. Explorer filters paths and opens the existing
+staged file manager for creation, folder operations, upload/import and mutations.
+
+PDF controls now include page entry, actual percentage zoom, fit width/page,
+rotation, document-text search with matching-page excerpts, and full-viewport
+focus. Search jumps to pages; it does not highlight canvas glyphs. Focus mode
+maximizes within the browser viewport, preserving the browser's own chrome.
+Member avatars identify the project team, not online presence; live cursors and
+anchored comments remain future work. Compiler engine remains pdfLaTeX/BibTeX;
+entry-file changes reuse the file manager. No dependencies or migrations added.
+
+Visual acceptance remains pending: browser discovery returned no connected
+browser. PAPER-06 history is next after acceptance. Google Meet remains paused.
+The pre-PAPER-05 roadmap baseline in task.md is retained as historical planning.
+
+Verification: lint, production build, diff whitespace checks, draft/export
+regressions and the new PDF helper suite pass. The build still reports the
+existing >500 kB bundle advisory. No hosted or local database changes were made.
 
 PROFILE-01 is implemented locally: protected profile editor, generated editable
 usernames, username/email badge preference, ten artwork avatars, uploaded photos,

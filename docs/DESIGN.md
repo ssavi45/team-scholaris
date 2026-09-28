@@ -13,6 +13,22 @@ The implementation reference is [src/index.css](../src/index.css), together with
 the shared layout and feature components. CSS has historical overrides; inspect
 the final cascade before changing a token or copying an old declaration.
 
+## Dedicated Paper surface
+
+Use an opaque global header with content-driven height and 10px vertical padding,
+followed directly by one compact project bar: back, truncated
+project title, permission, save state, team avatars and actions/layout controls.
+No second project-tab strip. No scattered destinations or permanent protection/
+compiler footer. Keep warnings discoverable automatically and details in drawers.
+Explorer starts at 220px, with a search field, nested tree and add menu. Both pane
+separators support pointer and keyboard resizing. Editor documents have tabs;
+active state uses a forest-green underline, not decorative cards. Compile is the
+primary PDF-header action, alongside secondary export/log and compiler settings.
+Use warm-white chrome, white code/PDF pages and a tinted preview canvas; all UI
+surfaces and controls adapt to dark mode, but rendered PDF pages remain white.
+Editor/PDF focus modes fill the browser viewport. Mobile uses Editor/PDF modes
+and an overlay explorer. Do not add glass, fake online indicators, or dead controls.
+
 ## Typography and color
 
 The user-supplied leaf/book logo is the current brand artwork.

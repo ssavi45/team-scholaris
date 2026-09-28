@@ -13,6 +13,30 @@ implementation, follow the authorized build's verification scope. Run relevant
 static checks and targeted automated checks when requested/appropriate; do not
 run data-mutating suites or provider actions merely to update documentation.
 
+## Paper layout rebuild: manual acceptance pending
+
+- At 375/768/1440px in light/dark, verify readable compact bars, no horizontal
+  page overflow, independent pane scrolling and reachable menus/controls.
+- Resize both dividers by drag and arrow keys. Collapse/reopen Explorer. Check
+  long/nested names, filter/no matches, folder toggle, hover and context actions.
+- New source/new folder must open the correct staged creation mode. Rename/move/
+  delete opens the selected item; dirty/compiling/read-only states block mutation.
+- Open multiple file tabs, edit each, close/reopen a dirty tab and undo. Drafts
+  must remain; closing the final tab shows an empty editor, not discarded work.
+- Toggle layout icons, editor/PDF full-screen, Escape and exit buttons. Dialogs
+  must remain usable. Leaving Paper restores normal navigation.
+- Recompile while viewing a later PDF page; preserve page/zoom/scroll, clamp when
+  output shrinks. Test page input, zoom, fit page/width, rotation and resizing.
+- Search literal text across pages; jump via excerpts. Changing query or PDF must
+  invalidate stale results. Check no match, textless pages and search failure.
+- Confirm autosave and errors remain truthful, recovery/conflicts auto-open, and
+  compile failures retain an explicitly outdated previous PDF. Test export/log.
+- Team avatars show saved profile choices and never imply online presence.
+
+Automated helper regression: `node scripts/test-paper-pdf-tools.mjs` checks page
+clamping, fit geometry, literal page search and cancellation. Draft/export suites
+remain applicable; these are not substitutes for browser interaction acceptance.
+
 ## Standard checks
 
 From the repository root:

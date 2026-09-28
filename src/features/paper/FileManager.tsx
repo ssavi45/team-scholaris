@@ -3,17 +3,17 @@ import { applyPaperTree, cleanupFigures, type PaperFile } from './paper-api'
 import { imageExtension, imageType, mergeEntries, moveEntries, removeEntries, textExtension, validateTree, type TreeEntry } from './file-tree'
 import type { ZipImport } from './zip-import'
 
-export default function FileManager({ projectId, files, settings, close, applied, onBusy }: {
-  projectId: string; files: PaperFile[]; settings: { revision: number; main_file: string }
+export default function FileManager({ initialPath = '', initialKind = 'folder', projectId, files, settings, close, applied, onBusy }: {
+  initialPath?: string; initialKind?: 'text' | 'folder'; projectId: string; files: PaperFile[]; settings: { revision: number; main_file: string }
   close: () => void; applied: (warning?: string) => void; onBusy: (busy: boolean) => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [entries, setEntries] = useState<TreeEntry[]>(files)
   const [main, setMain] = useState(settings.main_file)
-  const [selected, setSelected] = useState('')
-  const [destination, setDestination] = useState('')
+  const [selected, setSelected] = useState(initialPath)
+  const [destination, setDestination] = useState(initialPath)
   const [newPath, setNewPath] = useState('')
-  const [newKind, setNewKind] = useState<'text' | 'folder'>('folder')
+  const [newKind, setNewKind] = useState<'text' | 'folder'>(initialKind)
   const [incoming, setIncoming] = useState<ZipImport | null>(null)
   const [replace, setReplace] = useState(false)
   const [busy, setBusy] = useState(false)

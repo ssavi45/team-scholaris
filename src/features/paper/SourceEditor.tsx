@@ -10,9 +10,9 @@ import { useTheme } from '../../theme/theme-store'
 const lightTheme = EditorView.theme({
   '&': { height: '100%', backgroundColor: '#ffffff', color: '#16261a' },
   '.cm-scroller': { overflow: 'auto', lineHeight: '1.75' },
-  '.cm-content': { fontFamily: "'Cascadia Code', 'Consolas', monospace", fontSize: '13px', padding: '20px 0' },
+  '.cm-content': { fontFamily: "'Cascadia Code', 'Consolas', monospace", fontSize: '14px', padding: '10px 0' },
   '.cm-line': { padding: '0 20px' },
-  '.cm-gutters': { backgroundColor: '#fafbf9', color: '#9ca69f', border: 'none' },
+  '.cm-gutters': { backgroundColor: '#fafbf9', color: '#65766b', border: 'none' },
   '.cm-activeLine': { backgroundColor: '#f2f6f2' },
   '.cm-activeLineGutter': { backgroundColor: '#eaf0ea', color: '#395443' },
   '&.cm-focused': { outline: 'none' },
@@ -23,10 +23,12 @@ const lightTheme = EditorView.theme({
 })
 
 const lightHighlight = HighlightStyle.define([
+  { tag: [t.tagName, t.function(t.variableName), t.definitionKeyword], color: '#245aa1' },
+  { tag: [t.meta, t.attributeName], color: '#795095' },
   { tag: t.keyword, color: '#1f4331', fontWeight: '600' },
   { tag: t.atom, color: '#27523c' },
   { tag: t.number, color: '#8c4b1d' },
-  { tag: t.comment, color: '#7a8c7e', fontStyle: 'italic' },
+  { tag: t.comment, color: '#526f5b', fontStyle: 'italic' },
   { tag: t.string, color: '#2b6343' },
   { tag: t.bracket, color: '#4d6153' },
   { tag: t.operator, color: '#234a35' },
@@ -35,7 +37,7 @@ const lightHighlight = HighlightStyle.define([
 const darkTheme = EditorView.theme({
   '&': { height: '100%', backgroundColor: '#101713', color: '#EDF3EE' },
   '.cm-scroller': { overflow: 'auto', lineHeight: '1.75' },
-  '.cm-content': { fontFamily: "'Cascadia Code', 'Consolas', monospace", fontSize: '13px', padding: '20px 0', caretColor: '#95D5AC' },
+  '.cm-content': { fontFamily: "'Cascadia Code', 'Consolas', monospace", fontSize: '14px', padding: '10px 0', caretColor: '#95D5AC' },
   '.cm-line': { padding: '0 20px' },
   '.cm-gutters': { backgroundColor: '#141c17', color: '#a3b5a7', border: 'none' },
   '.cm-activeLine': { backgroundColor: '#18241c' },
