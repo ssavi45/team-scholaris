@@ -424,6 +424,13 @@ export type Database = {
         Args: { p_invitation_id?: string; p_token?: string }
         Returns: string
       }
+      list_paper_history: { Args: { p_project_id: string; p_before?: number }; Returns: Json }
+      get_paper_history: { Args: { p_project_id: string; p_history_id: number }; Returns: Json }
+      create_paper_checkpoint: { Args: { p_project_id: string; p_revision: number; p_label: string }; Returns: number }
+      delete_paper_checkpoint: { Args: { p_project_id: string; p_history_id: number }; Returns: undefined }
+      restore_paper_history: { Args: { p_project_id: string; p_history_id: number; p_revision: number; p_file_id?: string }; Returns: number }
+      paper_figure_referenced: { Args: { p_name: string }; Returns: boolean }
+      paper_unused_figures: { Args: { p_project_id: string }; Returns: { path: string }[] }
       apply_paper_manifest: {
         Args: {
           p_entries: Json

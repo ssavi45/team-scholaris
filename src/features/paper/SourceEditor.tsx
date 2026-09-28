@@ -71,9 +71,10 @@ function themeExtensions(isDark: boolean) {
 
 export type EditorMemory = Map<string, { state: EditorState; top: number; left: number }>
 
-export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory }: {
+export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory, jump }: {
   value: string; readOnly: boolean; onChange: (value: string) => void; onSave: () => void
   fileId: string; memory: EditorMemory
+  jump?: { fileId: string; line: number; token: number } | null
 }) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | null>(null)
@@ -126,6 +127,14 @@ export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory
   useEffect(() => {
     view.current?.dispatch({ effects: access.current.reconfigure(EditorState.readOnly.of(readOnly)) })
   }, [readOnly])
+
+  useEffect(() => {
+    const editor = view.current
+    if (!editor || !jump || jump.fileId !== fileId) return
+    const line = editor.state.doc.line(Math.min(Math.max(1, jump.line), editor.state.doc.lines))
+    editor.dispatch({ selection: { anchor: line.from, head: line.to }, effects: EditorView.scrollIntoView(line.from, { y: 'center' }) })
+    editor.focus()
+  }, [jump, fileId])
 
   return <div ref={host} className="source-editor" />
 }

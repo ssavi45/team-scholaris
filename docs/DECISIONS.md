@@ -1,5 +1,33 @@
 # Architecture and product decisions
 
+## PAPER-07: isolated manual compilation and conservative diagnostics (adopted)
+
+Preserve fresh-worker pdfLaTeX/BibTeX compilation. Clean rebuild is explicit but
+every compile already starts with fresh auxiliary files. Only public package
+downloads may benefit from network/browser caching. No project data or generated
+auxiliary file is shared across worker jobs. Show reported source locations only;
+fall back to raw context when logs are ambiguous and disable links after edits.
+Optional compile-on-save stays deferred until manual acceptance of this path.
+Do not add XeLaTeX/LuaLaTeX/Biber, system fonts or a server compile farm implicitly.
+
+
+## PAPER-06: bounded server-authored history (adopted)
+
+Capture full validated manifests inside trusted mutations, with stable file IDs
+and immutable figure references. Keep text snapshots at most every five minutes,
+plus before/after tree changes. Retain up to 24 automatic snapshots for seven days,
+pruned on new capture; inactivity does not run a background prune. Keep up to 20
+named/safety checkpoints until explicit deletion. Quotas are 50 MiB snapshot JSON
+and 100 MiB distinct live/historical figure bytes. Protected snapshots are never
+silently evicted. Explicit mutations fail safely if a required capture cannot fit;
+ordinary text autosaves may skip automatic capture when protected history fills up.
+
+Restore is a new, revision-checked atomic manifest with mandatory pre-restore
+safety capture. A persistent file-version ledger prevents stale-client version
+reuse after delete/restore, even after history pruning. This provides recoverable
+writing without pretending to implement real-time collaborative editing.
+
+
 These records preserve the reasons behind the current direction. Status describes
 a decision, not a test result. Current execution state belongs in
 [MEMORY.md](MEMORY.md); the only build checklist is [task.md](../task.md).

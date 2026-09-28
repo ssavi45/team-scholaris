@@ -72,11 +72,14 @@ try {
   sql(`update public.projects set status='active' where id='${pid}';`)
   state=await read()
   ok(await apply(owner,state,state.files.filter(f=>!f.path.startsWith('figures'))), 'Folder deletion removes descendants atomically')
-  ok(await owner.storage.from('paper-figures').remove([asset]), 'Unreferenced figure cleanup')
-  assert.ok((await owner.storage.from('paper-figures').download(asset)).error, 'Deleted figure absent')
+  await owner.storage.from('paper-figures').remove([asset])
+  ok(await owner.storage.from('paper-figures').download(asset), 'Historical figure remains protected after live deletion')
+  sql(`delete from public.paper_history where project_id='${pid}';`)
+  ok(await owner.storage.from('paper-figures').remove([asset]), 'Unreferenced figure cleanup after history expires')
+  assert.ok((await owner.storage.from('paper-figures').download(asset)).error, 'Unreferenced figure absent')
   console.log('PASS atomic tree changes, revisions, main selection, conflicts, folders, private figure upload/read/immutability/cleanup, viewer and archive restrictions')
 } finally {
-  if(projectId && clients[0]) { sql(`update public.projects set status='active',deleted_at=null where id='${projectId}'; delete from public.paper_files where project_id='${projectId}';`); if(uploaded.length) await clients[0].storage.from('paper-figures').remove(uploaded) }
+  if(projectId && clients[0]) { sql(`update public.projects set status='active',deleted_at=null where id='${projectId}'; delete from public.paper_history where project_id='${projectId}'; delete from public.paper_files where project_id='${projectId}';`); if(uploaded.length) await clients[0].storage.from('paper-figures').remove(uploaded) }
   for(const c of clients) await c.auth.signOut()
   if(ids.length) { const list=ids.map(id=>`'${id}'`).join(','); sql(`delete from public.projects where owner_id in (${list}); delete from auth.users where id in (${list});`) }
 }

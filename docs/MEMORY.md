@@ -1,8 +1,43 @@
 # Project memory
 
-Last updated: **2026-09-28**, after the requested Paper layout rebuild.
+Last updated: **2026-09-28**, after PAPER-06 and PAPER-07 implementation.
 
 ## Current position
+
+PAPER-07 follow-up: the worker now inspects generated main/included auxiliary
+files before running BibTeX. Papers without external bibliography commands,
+including inline thebibliography, no longer report spurious missing bibdata/style
+errors. Incomplete external bibliography configurations still produce diagnostics.
+The reported IEEE paper did produce a four-page PDF; its remaining box warnings
+concern manuscript layout rather than a failed compile.
+
+PAPER-06 adds History in the paper project bar: automatic/named/safety snapshots,
+source/tree comparison, ZIP download, individual-file and complete-paper restore.
+Restores preserve a safety checkpoint and reject stale revisions. Historical
+figures remain private and protected; file versions cannot be reused after restore.
+Migrations 20260928000100 and 20260928000200 were applied only to local Supabase.
+The second maps expected history conflicts to HTTP 409, avoiding gateway retries.
+
+PAPER-07 adds grouped compiler diagnostics, repair hints, issue navigation and
+explicit source links where the engine reports a reliable location. Source changes
+disable stale diagnostic jumps. The last good PDF survives failure/cancellation;
+results record revision/main file and show preparation/figure/engine timings.
+Every rebuild uses a fresh worker filesystem; optional compile-on-save is deferred.
+Google Meet remains paused. Next functional increment is PAPER-08 after acceptance.
+
+Verification: history authorization/quotas/restore rollback checks, authenticated
+Storage + restored-paper WASM compilation, source diff, draft and export checks,
+diagnostic tests and real compiler corpus passed. Corpus includes PNG/JPEG, custom
+class/style, math/tables, malformed/missing bibliography, unsupported Unicode and
+cross-project filesystem isolation. On Windows x64 / Node 24.16.0 the isolated
+benchmark measured 6051 ms cold package cache and 809 ms warm for a small article.
+These are harness measurements, not browser/device performance claims.
+Browser visual acceptance remains pending (no connected browser). Hosted history
+migrations are not deployed. No dependencies added; no commit or push performed.
+Final lint, production build and whitespace checks passed. The existing bundle-size
+advisory remains. Optional compile-on-save is not implemented in this increment.
+
+## Previous layout delivery
 
 Paper polish: the navbar uses content-driven height with 10px internal vertical
 padding so the navigation/profile pills clear its bottom border. There is no
@@ -26,7 +61,7 @@ anchored comments remain future work. Compiler engine remains pdfLaTeX/BibTeX;
 entry-file changes reuse the file manager. No dependencies or migrations added.
 
 Visual acceptance remains pending: browser discovery returned no connected
-browser. PAPER-06 history is next after acceptance. Google Meet remains paused.
+browser. History has since been implemented; Google Meet remains paused.
 The pre-PAPER-05 roadmap baseline in task.md is retained as historical planning.
 
 Verification: lint, production build, diff whitespace checks, draft/export

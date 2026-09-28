@@ -1,0 +1,22 @@
+.paper-history-dialog { width: min(1180px, calc(100vw - 32px)); max-width: none; max-height: 92dvh; padding: 22px; }
+.history-heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+.paper-history-dialog p { font-size: 12px; line-height: 1.6; color: var(--text-secondary); margin: 8px 0; }
+.history-limits { padding: 10px 0; border-bottom: 1px solid var(--border-medium); font-size: 12px; }
+.history-limits summary { cursor: pointer; }
+.history-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 20px; margin-top: 16px; }
+.history-list, .history-preview { min-width: 0; max-height: 60dvh; overflow: auto; }
+.history-list { display: flex; flex-direction: column; gap: 10px; padding-right: 12px; border-right: 1px solid var(--border-medium); }
+.history-list > * { flex-shrink: 0; }
+.history-list form { padding: 10px 0; }
+.history-item { display: grid; gap: 4px; text-align: left; border: 1px solid var(--border-medium); padding: 10px; border-radius: 6px; color: var(--text-secondary); font-size: 11px; }
+.history-item strong { color: var(--text-primary); font-size: 12px; overflow-wrap: anywhere; }
+.history-item[aria-pressed=true] { background: var(--accent-light); border-color: var(--accent); }
+.history-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.history-source-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.history-source-pair > div { min-width: 0; }
+.history-source-pair pre, .history-diff { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; padding: 10px; font: 12px/1.6 Consolas, monospace; background: var(--bg-subtle); color: var(--text-primary); }
+.diff-removed { color: #8b2929; background: #ffeded; }
+.diff-added { color: #205531; background: #e6f4e9; }
+html[data-theme=dark] .diff-removed { color: #ffb4ac; background: #342021; }
+html[data-theme=dark] .diff-added { color: #b3edc4; background: #203c2a; }
+@media (max-width: 740px) { .history-grid { grid-template-columns: 1fr; } .history-list { max-height: 220px; border-right: 0; } .history-preview { max-height: none; } .history-source-pair { grid-template-columns: 1fr; } }

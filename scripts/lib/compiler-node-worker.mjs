@@ -1,6 +1,6 @@
 // Execute the actual vendored WebAssembly engine in a Node worker for integration tests.
 // This is a compiler harness, not a browser or UI emulator.
-import { parentPort } from 'node:worker_threads'
+import { parentPort, workerData } from 'node:worker_threads'
 import { createContext, runInContext } from 'node:vm'
 import { createRequire } from 'node:module'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 
 const vendor = resolve('public/vendor/swiftlatex')
-const cache = join(tmpdir(), 'scholaris-texlive-test-cache')
+const cache = workerData?.cacheDirectory ?? join(tmpdir(), 'scholaris-texlive-test-cache')
 mkdirSync(cache, { recursive: true })
 class XMLHttpRequest {
   open(method, url) { if (method !== 'GET') throw Error('GET only'); this.url = url }

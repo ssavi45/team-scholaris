@@ -1,5 +1,24 @@
 # Product Requirements Document
 
+## Trustworthy compilation (PAPER-07)
+
+An author can understand an error, navigate to a reported source line, repair it,
+and retry without losing edits or the last good PDF. Compilation identifies its
+saved revision/main file and distinguishes failure, cancellation, stale output,
+warnings and bibliography errors even when a PDF was generated. Unknown locations
+remain log context rather than guessed navigation. Manual compilation is the
+default; optional compile-on-save awaits acceptance of the reliable manual path.
+
+
+## Recoverable manuscript history (PAPER-06)
+
+Authors can label checkpoints, compare saved source/tree revisions, download old
+source with its figures, and restore a file or whole paper as a new revision.
+Every restore preserves today's paper in a protected safety checkpoint. Viewers
+can inspect authorized history. This complements local draft recovery; it does
+not provide simultaneous coediting or an unlimited archival backup service.
+
+
 ## Product and purpose
 
 **Team Scholaris** is a private, project-based research collaboration workspace.

@@ -4,6 +4,17 @@ export class CompileError extends Error {
   log: string
   constructor(message: string, log = '') { super(message); this.name = 'CompileError'; this.log = log }
 }
+
+// Cancel waiting for an in-flight draft save without cancelling the save itself.
+// Its eventual result still belongs to the draft store, never to a cancelled job.
+export function waitForPreparation<T>(pending: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new DOMException('Compilation cancelled.', 'AbortError'))
+    signal.addEventListener('abort', abort, { once: true })
+    pending.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort))
+    if (signal.aborted) abort()
+  })
+}
 export function sourceSignature(files: SourceFile[], mainFile = 'main.tex') {
   return JSON.stringify([mainFile, files.map((file) => [file.path, file.kind ?? 'text', file.kind === 'image' ? file.storage_path : file.content]).sort((a, b) => (a[0] ?? '').localeCompare(b[0] ?? ''))])
 }
@@ -55,6 +66,8 @@ export async function compilePaper(files: SourceFile[], signal: AbortSignal, pro
       worker.onmessageerror = () => reject(new CompileError('The compiler returned an unreadable response.', log))
       progress('Loading LaTeX engine...')
       worker.onmessage = ({ data }: MessageEvent) => {
+        if (signal.aborted) return
+        if (data.cmd === 'resource-error') { reject(new CompileError(`Unable to download compiler dependency ${data.name}. Check your network and retry.`, log)); return }
         if (data.cmd === 'package') { progress(`Loading package: ${data.name}`); return }
         if (!initialized && data.result === 'ok' && !data.cmd) {
           initialized = true

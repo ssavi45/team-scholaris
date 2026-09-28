@@ -57,7 +57,7 @@ export async function hydrateFigures(files: SourceFile[], signal: AbortSignal): 
     signal.throwIfAborted()
     if (file.kind !== 'image' || file.bytes) { result.push(file); continue }
     if (!file.storage_path) throw new Error(`Missing figure: ${file.path}`)
-    const { data, error } = await client().storage.from('paper-figures').download(file.storage_path)
+    const { data, error } = await client().storage.from('paper-figures').download(file.storage_path, {}, { signal })
     signal.throwIfAborted()
     if (error) throw new Error(`Unable to load ${file.path}. Check your connection and project access.`)
     if (data.size > 5242880) throw new Error(`Figure too large: ${file.path}`)
@@ -94,7 +94,14 @@ export async function applyPaperTree(projectId: string, revision: number, entrie
 export async function cleanupFigures(paths: string[]) {
   if (!paths.length) return true
   try {
-    const { data, error } = await client().storage.from('paper-figures').remove(paths)
-    return !error && data?.length === paths.length
+    const unreferenced: string[] = []
+    for (const path of paths) {
+      const { data, error } = await client().rpc('paper_figure_referenced', { p_name: path })
+      if (error) return false
+      if (!data) unreferenced.push(path)
+    }
+    if (!unreferenced.length) return true
+    const { data, error } = await client().storage.from('paper-figures').remove(unreferenced)
+    return !error && data?.length === unreferenced.length
   } catch { return false }
 }

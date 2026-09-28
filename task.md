@@ -1,10 +1,28 @@
 # Paper workspace roadmap and build tracker
 
-Last updated: 2026-09-28. **Paper layout rebuild implemented; manual visual acceptance pending.**
+Last updated: 2026-09-28. **PAPER-06 and PAPER-07 implemented locally; manual visual acceptance pending.**
 This is the only task tracker. Current product focus: make Paper the reason a
 research team chooses Scholaris. Previous delivery records remain below.
 
-## Current build: dedicated Paper writing environment
+## Current handoff: PAPER-06 and PAPER-07
+
+- [x] Fix unconditional BibTeX execution: inspect generated main/included aux files,
+  skip unrequested bibliography processing and retain genuine configuration errors.
+
+- [x] Server-authored history, named checkpoints, source/tree comparison and snapshot ZIP.
+- [x] Revision-checked single-file/whole-paper restore with protected pre-restore checkpoint.
+- [x] Retained private figures and monotonic restored file versions; bounded history quotas.
+- [x] Two history migrations applied locally; no hosted migration deployment.
+- [x] Actionable compile diagnostics, previous/next issue and conservative jump-to-source.
+- [x] Snapshot revision/main-file binding, cancelled/failed/stale distinctions and last-good PDF.
+- [x] Cancellable figure hydration, bounded preparation, clean rebuild and dependency errors.
+- [x] Real WASM corpus, history/Storage integration, helper tests and compatibility documentation.
+- [ ] Manual light/dark, mobile and keyboard acceptance of history and diagnostics.
+- [ ] Optional compile-on-save: deferred until manual compilation acceptance; no automatic jobs enabled.
+
+Next functional build: PAPER-08, after the user's acceptance. Google Meet remains paused.
+
+## Previous build: dedicated Paper writing environment
 
 - [x] Opaque global header with internal vertical padding plus one compact project bar; remove scattered links.
 - [x] Explorer / Editor / PDF with two keyboard/pointer resize handles and explorer collapse.
@@ -21,8 +39,7 @@ research team chooses Scholaris. Previous delivery records remain below.
 - [ ] Future: live collaborator cursors and anchored comments (not part of this UI build).
 
 PAPER-05 draft/autosave code is present. The original baseline review below predates
-that implementation. PAPER-06 history remains the next functional increment after
-acceptance of this layout; no inactive History control is added.
+that implementation. PAPER-06 now adds a functional History control.
 
 ## Product judgment: what must earn the user's trust
 
@@ -167,47 +184,47 @@ no account sees another account's cached text, and no conflict is silently overw
 **User story:** "Show me what changed since yesterday and let me bring back a
 paragraph or deleted chapter without destroying today's work."
 
-- [ ] Design server-authored history for content plus tree/main-file revisions,
+- [x] Design server-authored history for content plus tree/main-file revisions,
   with actor/time and file identity retained across renames. Do not equate a
   per-file version integer or Activity metadata with recoverable history.
-- [ ] Add named project checkpoints and a paginated history panel; distinguish
+- [x] Add named project checkpoints and a paginated history panel; distinguish
   automatic checkpoints from deliberate labels such as 'Advisor draft'.
-- [ ] Show source diffs and file additions/deletions; preview old text without
+- [x] Show source diffs and file additions/deletions; preview old text without
   modifying the current editor. Download a selected snapshot.
-- [ ] Restore a file or project as a **new** revision, with preview and confirmation;
+- [x] Restore a file or project as a **new** revision, with preview and confirmation;
   require a checkpoint before restore and preserve the current version.
-- [ ] Handle draft conflicts and atomic tree restoration, including referenced
+- [x] Handle draft conflicts and atomic tree restoration, including referenced
   figures. Historical figures cannot be cleaned up while retained history needs them.
-- [ ] Define bounded automatic snapshot frequency, retention and storage quota
+- [x] Define bounded automatic snapshot frequency, retention and storage quota
   before schema implementation; expose limits and eviction rules. Named snapshots
   must not be silently pruned. Do not store a full project per keystroke.
-- [ ] Owner/member restore only in active projects; viewers inspect authorized
+- [x] Owner/member restore only in active projects; viewers inspect authorized
   history. Removed users lose access; research bodies never enter Activity logs.
 
 **Acceptance:** Rename/delete/restore a chapter and figure, compare revisions,
 restore under concurrent edits, test forbidden access, and verify the resulting
-project compiles. Proposed retention values remain a design decision, not a promise.
+project compiles. Retention is defined in DECISIONS and exposed in the history panel. Manual UI acceptance is pending.
 
 ## PAPER-07 ? Compilation users can understand
 
 **User story:** "Tell me what broke, take me to it, and keep the last good PDF."
 
-- [ ] Build a repeatable fixture corpus: single/multi-file articles, nested main,
+- [x] Build a repeatable fixture corpus: single/multi-file articles, nested main,
   BibTeX, tables/math, PNG/JPEG, custom class/style, missing packages, bad syntax,
   missing citations, non-ASCII text, cancellation and resource/network failures.
-- [ ] Bind every compile result to source/tree revision and main file. Keep the
+- [x] Bind every compile result to source/tree revision and main file. Keep the
   last successful PDF; label compiling, cancelled, failed, stale and warnings
   separately. A result must not overwrite newer-job state.
-- [ ] Parse actionable errors/warnings with file/line where available; group repeated
+- [x] Parse actionable errors/warnings with file/line where available; group repeated
   diagnostics and offer next/previous issue plus jump-to-source. Keep raw logs.
   For uncertain locations, show the raw context instead of guessing a line.
-- [ ] Explain common bibliography failures: missing key, missing database/style,
+- [x] Explain common bibliography failures: missing key, missing database/style,
   malformed entry and unresolved references. Distinguish warnings from fatal errors.
-- [ ] Measure cold/warm compile and asset hydration. Improve caching only where
+- [x] Measure cold/warm compile and asset hydration. Improve caching only where
   isolation is preserved; never leak one project's auxiliary files into another.
-- [ ] Keep cancellation/timeouts effective during preparation and engine execution.
+- [x] Keep cancellation/timeouts effective during preparation and engine execution.
   Offer a deliberate clean rebuild and retry; expose dependency-download failure.
-- [ ] Publish a tested compatibility matrix: current pdfLaTeX/BibTeX path, supported
+- [x] Publish a tested compatibility matrix: current pdfLaTeX/BibTeX path, supported
   asset types and known limitations. Unicode/system-font, XeLaTeX/LuaLaTeX/Biber
   support needs a separately accepted runtime/cost/security decision.
 - [ ] Optional compile-on-save only after reliable manual compilation, disabled by

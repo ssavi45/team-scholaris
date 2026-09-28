@@ -1,5 +1,19 @@
 # Security requirements
 
+## Manuscript history boundary
+
+History bodies are server-written and returned only to verified current project
+members through authorized RPCs. Viewers may inspect/download history; only active
+owners/members may checkpoint, delete snapshots or restore. Removed users lose
+access. Snapshot content must never be copied into Activity event metadata.
+
+Restore checks the current workspace revision, serializes against other writes,
+and preserves a safety checkpoint transactionally. File version clocks remain
+monotonic across removal/restoration. Private immutable figures remain protected
+while any live file or retained snapshot references them. Cleanup is explicit,
+authorized and restricted to unreferenced objects older than one hour.
+
+
 This document records current protections and requirements for future changes.
 It is not a certification or a claim of completed production security review.
 See [MEMORY](MEMORY.md) for known gaps and [TEST_PLAN](TEST_PLAN.md) for verification.

@@ -1,5 +1,27 @@
 # Design system
 
+## Compilation feedback
+
+Distinguish compiling, cancelled, failed, outdated and successful-with-diagnostics.
+Keep the last successful PDF visibly labeled after errors/cancellation. Diagnostics
+offer previous/next issue, a repair suggestion, exact source links when reliable,
+and expandable raw context/log. A PDF can exist despite BibTeX errors; never label
+that as error-free. Keep timing/engine details inside the diagnostics/settings
+disclosure. Do not introduce persistent status rows or decorative compiler cards.
+
+
+## Paper history interaction
+
+The compact project bar exposes History. Use an accessible native modal with a
+paginated timeline and a separate comparison pane, stacking on narrow screens.
+Distinguish automatic, named and protected safety snapshots. Show author, time,
+main file and revision; preview source and tree changes without editing live text.
+Diffs include explicit plus/minus markers and readable light/dark colors.
+Restore requires confirmation and saved, conflict-free drafts. Preserve a visible
+retry/error state and disclose retention limits; never imply every keystroke is a
+historical checkpoint. Snapshot ZIP and deletion remain deliberate actions.
+
+
 ## Direction
 
 Scholaris uses a light scholarly visual style: editorial serif headings,

@@ -1,5 +1,36 @@
 # Architecture
 
+## PAPER-07: compiler contract
+
+PaperPage captures the saved manifest/main-file revision, hydrates figures with an
+AbortSignal and launches a fresh compiler worker. A three-minute preparation/job
+deadline complements the two-minute engine timeout. Cancelling a compile stops
+waiting for draft saves without aborting the draft store's durable save operation.
+Only the current uncancelled job may publish output. PDF output retains its source
+signature, revision and main file; edits mark it stale rather than discard it.
+
+`compile-diagnostics.ts` groups recognized engine messages and resolves only
+reported project-file locations. `CompileDiagnostics.tsx` exposes repairs, source
+navigation and raw logs. Stale diagnostics cannot jump to outdated lines. The
+worker adapter reports dependency network failures without receiving auth tokens.
+Fresh workers isolate auxiliary files; no project-output caching was introduced.
+
+
+## PAPER-06: manuscript history
+
+`HistoryPanel.tsx` presents history; `history-api.ts` owns RPC access and
+`history-diff.ts` compares stable identities and source blocks. Server-authored
+`paper_history` snapshots retain source, file tree, main-file selection and private
+figure references. Public mutation RPCs wrap private validated implementations and
+capture history under the project lock. `paper_file_version_clock` prevents a
+deleted/restored identity from reusing a version held by a stale client.
+
+Restore requires the previewed workspace revision and creates a protected safety
+checkpoint before applying an atomic manifest. Readers use authorized list/detail
+RPCs; direct history table access is revoked. Figure cleanup checks both live and
+historical references, with a database deletion guard as well as Storage policies.
+
+
 ## Runtime and responsibilities
 
 Team Scholaris is a React/TypeScript SPA built by Vite, styled with Tailwind CSS

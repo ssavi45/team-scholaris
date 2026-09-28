@@ -1,5 +1,52 @@
 # Test plan
 
+## PAPER-06 / PAPER-07 checks
+
+Bibliography regression: a paper with no bibliography and an inline
+thebibliography must not report missing bibdata/bibstyle. External bibliographies
+in included chapters must resolve; missing style/database configurations must
+still report errors. These are real WASM cases in the compiler corpus.
+
+- `node scripts/test-history-diff.mjs`: stable identities and bounded source comparison.
+- `node scripts/test-paper-history.mjs`: local rollback-only authorization, revisions,
+  protected figures, retention, quotas, pagination and restore safety.
+- `node scripts/test-paper-history-integration.mjs`: disposable local Auth/project/
+  Storage fixtures, real figure deletion protection, HTTP 409 on stale restore,
+  restored chapter/image compilation; fixtures removed in finally.
+- `node scripts/test-compile-diagnostics.mjs`: nested/explicit/unknown locations,
+  grouping, bibliography guidance, preparation cancellation and network errors.
+- `node scripts/test-compiler-corpus.mjs` and `node scripts/test-paper-compiler.mjs`:
+  real WASM fixtures, bibliography/cross-reference rendering, images, custom
+  styles/classes, failed input, timeout/cancellation and clean worker isolation.
+- `node scripts/benchmark-paper-compiler.mjs`: separate cold/warm temporary package
+  cache; report Node/OS and network conditions, not browser performance claims.
+- Run existing draft/export regression checks, lint, build and `git diff --check`.
+
+Manual acceptance still required: open History as member/viewer; name/compare/
+download a checkpoint; delete and restore a chapter/figure; verify dirty drafts
+block restore; edit in another tab and verify refresh is required. Inspect narrow
+screen and both themes. Break a nested source command, navigate to its line,
+repair/recompile; verify warnings versus fatal errors, cancellation during figure
+loading, last-good PDF, stale-location disabling and keyboard focus. Observe
+read/save, figure and engine timings in diagnostics with browser cache cold/warm.
+
+### Tested compiler compatibility
+
+| Feature | Current result |
+| --- | --- |
+| pdfLaTeX articles, nested inputs/main, math, tables | Real WASM fixtures pass |
+| BibTeX and plain style, citations and references | Valid fixture renders; malformed/missing data yields diagnostics |
+| PNG/JPEG figures | Real WASM fixtures pass; corrupt images may fail engine decoding |
+| Project-local .cls/.sty | Real WASM fixtures pass; no cross-project filesystem reuse |
+| Latin accents through TeX commands | Fixture passes |
+| Arbitrary Unicode scripts | Not supported generally; Bengali fixture yields explicit input error |
+| Missing package | Actionable failure; availability depends on the configured package service |
+| XeLaTeX/LuaLaTeX/Biber/system fonts/shell escape | Not supported; requires a separately approved runtime |
+
+Browser visual/device acceptance and broad package compatibility are not implied
+by this matrix. Compile-on-save is intentionally deferred until manual acceptance.
+
+
 ## What counts as working
 
 A feature needs persisted happy-path behavior, authorization at the backend,
