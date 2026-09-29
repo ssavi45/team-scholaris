@@ -1,5 +1,74 @@
 # Design system
 
+PDF toolbar: chevron previous/next buttons surround a centered current/total page
+box with spinner-free page entry. Show zoom once in the zoom selector, including
+actual percentage for fit modes. Separate navigation, zoom and view tools with
+subtle dividers; keep each group together when the toolbar wraps.
+
+Compiler options use a distinct information header and full-width bordered action
+buttons with icon, action title and short helper text. Disabled actions explain
+why. Secondary compiler information is collapsed; buttons use visible hover/focus
+states in both themes. Avoid styling actionable controls like informational prose.
+
+Compilation reports prioritize outcome and action: a short status header, error/
+warning counts, then expandable issues with plain titles and source locations.
+Errors precede warnings. Keep full output in a separate Full log view, original
+messages under Technical details, and revision/timings under Build details.
+The header/close action remain visible above one scrolling body. Use themed
+surfaces, amber warning icons and red error icons with text equivalents.
+
+Successful PDFs remain the primary view even when TeX reports warnings. Keep the
+warning count visible and provide a labelled Issues action; open diagnostics
+automatically for errors only. Bound its height and include Close diagnostics.
+
+## Compilation responsiveness
+
+Warm the engine without blocking workspace editing. Keep package loading and
+reference resolution progress visible during compile, and include actual pass
+count in diagnostics timing. Compiler settings offer Restart compiler and rebuild
+as a recovery action. Preserve the last successful preview while compiling; do not
+claim instant cold compilation or hide real dependency download failures.
+
+
+## Editor toolbar clarity follow-up
+
+Use a single writing toolbar: File, Find & replace, Insert, Tools, Editor settings.
+File contains opening, reopening and locating documents. Insert names outcomes
+(Bold text, Bullet list, Math equation, Figure template). Tools contains Go to line,
+Comment / uncomment lines and Search this text in PDF, with an explanation when
+PDF lookup is unavailable. Settings presents labelled controls and a structured
+shortcut list. Disclosures close on outside pointer input, focus departure or Escape.
+
+Keep CodeMirror search above the source, with compact inline checkboxes, plain
+labels, themed buttons and bounded height. Explicitly isolate its inputs/labels
+from global application form styles. Menus fit the editor width and wrap gracefully
+on narrow screens; avoid an additional persistent file-action row.
+
+
+## PAPER-09: continuous reading
+
+The reader is a continuous vertical document, never a single-page carousel. Page
+arrows and direct page entry scroll within that document. Show true zoom percentage,
+fit width/page, rotation, search and focus controls together. Keep paper white in
+both themes. Text is selectable; selected search occurrences are highlighted.
+Pages/bookmarks open in a compact navigator (overlay on narrow screens). Nearby
+thumbnails provide orientation without rendering the full document at once.
+Source lookup is labelled text search and unavailable for outdated PDFs. Maintain
+an expandable text alternative. Browser acceptance is still required for alignment
+and touch/keyboard interactions at 375/768/1440px.
+
+
+## PAPER-08: writing controls
+
+Use compact Files/Outline/Search sidebar modes and document tabs with dirty/conflict
+markers. Open/reopen/reveal and editor tools remain small and theme-aware. Keep
+search results labelled by path and line; disclose approximate outline/word counts.
+Quick file switch supports arrows, Enter and Escape. Replacement uses a native
+preview dialog with explicit apply, loading/error/blocked states and changed-source
+blocks. Preserve full-width panes; small screens default to one pane and a hidden
+sidebar. Font, wrapping, indentation and layout preferences persist per user/device.
+
+
 ## Compilation feedback
 
 Distinguish compiling, cancelled, failed, outdated and successful-with-diagnostics.

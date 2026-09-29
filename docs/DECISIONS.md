@@ -1,8 +1,39 @@
 # Architecture and product decisions
 
+## Reuse engine/packages, reset document state
+
+Supersedes the earlier fresh-worker-per-click choice for the interactive workspace.
+Keep a workspace-owned engine ready and cache public package responses across visits.
+Always clear and verify /work before a new job; do not retain auxiliary output or
+reuse PDFs across different source snapshots. Adaptive passes use actual generated
+reference state rather than scanning source commands. Cancellation/errors retire
+the engine. Retain a user-facing Restart compiler and rebuild recovery action.
+
+
+## PAPER-09: continuous local rendering and honest source lookup
+
+Use the existing PDF.js dependency for virtualized continuous pages, text layers,
+links and bookmarks; do not add a second viewer or change the compiler. Preserve
+page/fraction reading anchors rather than absolute pixels across recompiles.
+The 2026-09-29 real nested-main/include/BibTeX probe found no SyncTeX primitive or
+artifact. Ship literal text lookup with stale-output guards; defer exact coordinate
+mapping until engine support exists. Defer the optional separate preview window
+until authentication/revocation, update and memory lifecycle are accepted.
+
+
+## PAPER-08: reuse the editor and atomic manifest boundary
+
+Use the existing CodeMirror editor/history and draft store for navigation, snippets
+and preferences. Use literal source search and a conservative include outline,
+with explicit limitations rather than pretending to parse all TeX. Multi-file
+replacement reuses the revision-checked manifest transaction and history capture;
+there is no second bulk-write path or new schema. Preferences stay on the device
+and are scoped by user; manuscript content is not part of preference storage.
+
+
 ## PAPER-07: isolated manual compilation and conservative diagnostics (adopted)
 
-Preserve fresh-worker pdfLaTeX/BibTeX compilation. Clean rebuild is explicit but
+Preserve pdfLaTeX/BibTeX compilation with clean document state (engine reuse now supersedes per-click worker recreation). Clean rebuild is explicit but
 every compile already starts with fresh auxiliary files. Only public package
 downloads may benefit from network/browser caching. No project data or generated
 auxiliary file is shared across worker jobs. Show reported source locations only;

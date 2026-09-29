@@ -1,5 +1,24 @@
 # Product Requirements Document
 
+## Continuous manuscript reading (PAPER-09)
+
+Readers scroll naturally through all pages, preserve their reading position across
+recompiles, search occurrences, select/copy text and follow citations or safe links.
+Page jump, zoom/fit/rotate/focus and bookmark/thumbnail navigation support long papers.
+Source lookup uses clearly labelled text search because this compiler has no verified
+SyncTeX output. Exact coordinate mapping and a separate preview window remain gated.
+
+
+## Comfortable editing (PAPER-08)
+
+Authors can navigate included chapters, find text across current drafts, reopen
+closed documents, insert undoable LaTeX snippets and customize editor readability.
+Project replacement requires a preview and saved, conflict-free source and rejects
+stale revisions. Word counts are approximate current-file counts, not publication
+metrics. Outline supports literal headings and includes, not complete TeX expansion.
+Advanced spellcheck and simultaneous coediting are outside this increment.
+
+
 ## Trustworthy compilation (PAPER-07)
 
 An author can understand an error, navigate to a reported source line, repair it,

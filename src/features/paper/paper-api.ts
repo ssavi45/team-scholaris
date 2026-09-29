@@ -51,18 +51,24 @@ export async function loadPaperState(projectId: string, signal?: AbortSignal) {
   if (before?.revision !== settings?.revision) throw new Error('The paper changed while loading. Please reload.')
   return { files, settings }
 }
-export async function hydrateFigures(files: SourceFile[], signal: AbortSignal): Promise<SourceFile[]> {
+export async function hydrateFigures(files: SourceFile[], signal: AbortSignal, cache?: Map<string, Uint8Array<ArrayBuffer>>): Promise<SourceFile[]> {
+  // Storage objects are immutable. Caller scopes this optional cache to one authorized workspace.
+  const live = new Set(files.filter(file => file.kind === 'image').map(file => file.storage_path))
+  if (cache) for (const key of cache.keys()) if (!live.has(key)) cache.delete(key)
   const result: SourceFile[] = []
   for (const file of files) {
     signal.throwIfAborted()
     if (file.kind !== 'image' || file.bytes) { result.push(file); continue }
     if (!file.storage_path) throw new Error(`Missing figure: ${file.path}`)
+    const cached = cache?.get(file.storage_path)
+    if (cached) { imageType(file.path, cached); result.push({ ...file, bytes: cached }); continue }
     const { data, error } = await client().storage.from('paper-figures').download(file.storage_path, {}, { signal })
     signal.throwIfAborted()
     if (error) throw new Error(`Unable to load ${file.path}. Check your connection and project access.`)
     if (data.size > 5242880) throw new Error(`Figure too large: ${file.path}`)
     const bytes = new Uint8Array(await data.arrayBuffer())
     imageType(file.path, bytes)
+    if (cache && [...cache.values()].reduce((sum, item) => sum + item.byteLength, 0) + bytes.byteLength <= 26214400) cache.set(file.storage_path, bytes)
     result.push({ ...file, bytes })
   }
   return result

@@ -13,27 +13,75 @@ class PackageRequest {
     this.missing = packageFile && /\.(aux|bbl|blg|log|toc|out|synctex|bib)$/.test(url.pathname);
     this.resourceName = url.pathname.split('/').pop();
     if (this.missing) return;
+    this.url = packageFile ? url.href : null;
+    this.cached = this.url ? packageCache.get(this.url) : null;
+    if (this.cached) return;
     if (packageFile) self.postMessage({ cmd: 'package', name: url.pathname.split('/').pop() });
     this.request.open('GET', url.href, async);
   }
   reportFailure() { self.postMessage({ cmd: 'resource-error', name: this.resourceName }); }
   send() {
-    if (this.missing) return;
+    if (this.missing || this.cached) return;
     try {
       this.request.send(null);
+      if (this.url) rememberPackage(this.url, this.request);
       if (this.request.readyState === 4 && (this.request.status === 0 || this.request.status >= 500)) this.reportFailure();
     } catch (error) { this.reportFailure(); throw error; }
   }
-  get status() { return this.missing || this.request.status === 404 ? 301 : this.request.status; }
-  get response() { return this.request.response; }
+  get status() { if (this.cached) return this.cached.status ?? 200; return this.missing || this.request.status === 404 ? 301 : this.request.status; }
+  get response() { return this.cached?.body ?? this.request.response; }
   get responseText() { return this.request.responseText; }
   set responseType(value) { this.request.responseType = value; }
   set timeout(value) { this.request.timeout = Math.min(value, 15000); }
   set onload(value) { this.request.onload = (event) => { if (this.request.status === 0 || this.request.status >= 500) this.reportFailure(); if (typeof value === 'function') value.call(this.request, event); }; }
   set onerror(value) { this.request.onerror = (event) => { this.reportFailure(); if (typeof value === 'function') value.call(this.request, event); }; }
-  getResponseHeader(name) { return this.request.getResponseHeader(name); }
+  getResponseHeader(name) { return this.cached ? this.cached[name.toLowerCase()] ?? null : this.request.getResponseHeader(name); }
 }
 self.XMLHttpRequest = PackageRequest;
+// Load only public package responses; document source/output never enters this cache.
+const packageCache = new Map();
+let packageDatabase;
+const cacheLimit = 64 * 1024 * 1024;
+let cacheBytes = 0;
+function loadPackageCache() {
+  if (!self.indexedDB) return Promise.resolve();
+  return new Promise(resolve => {
+    let finished = false;
+    const finish = () => { if (!finished) { finished = true; resolve(); } };
+    const timer = setTimeout(finish, 1500);
+    const request = self.indexedDB.open('scholaris-public-tex-v1', 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('packages', { keyPath: 'url' });
+    request.onerror = request.onblocked = () => { clearTimeout(timer); finish(); };
+    request.onsuccess = () => {
+      if (finished) { request.result.close(); return; }
+      packageDatabase = request.result;
+      packageDatabase.onversionchange = () => { packageDatabase.close(); packageDatabase = null; };
+      const transaction = packageDatabase.transaction('packages', 'readwrite');
+      const cursor = transaction.objectStore('packages').openCursor();
+      cursor.onsuccess = () => {
+        const item = cursor.result;
+        if (!item) { clearTimeout(timer); finish(); return; }
+        const value = item.value;
+        if (Date.now() - value.time > (value.status === 301 ? 1 : 7) * 86400000 || !(value.body instanceof ArrayBuffer) || cacheBytes + value.body.byteLength > cacheLimit || packageCache.size >= 2048) item.delete();
+        else { packageCache.set(value.url, value); cacheBytes += value.body.byteLength; }
+        item.continue();
+      };
+      transaction.onerror = transaction.onabort = () => { clearTimeout(timer); finish(); };
+    };
+  });
+}
+function rememberPackage(url, request) {
+  const status = request.status === 404 ? 301 : request.status;
+  const body = status === 301 ? new ArrayBuffer(0) : request.response;
+  const fileid = request.getResponseHeader('fileid'), pkid = request.getResponseHeader('pkid');
+  if (![200, 301].includes(status) || !(body instanceof ArrayBuffer) || body.byteLength > 32 * 1024 * 1024 || cacheBytes + body.byteLength > cacheLimit || packageCache.size >= 2048 || (status === 200 && !fileid && !pkid)) return;
+  if (packageCache.has(url)) return;
+  const value = { url, body, fileid, pkid, status, time: Date.now() };
+  packageCache.set(url, value); cacheBytes += body.byteLength;
+  try { packageDatabase?.transaction('packages', 'readwrite').objectStore('packages').put(value); } catch { /* Cache failure must not fail compilation. */ }
+}
+async function initializeEngine() {
+await loadPackageCache().catch(() => {});
 importScripts('./swiftlatexpdftex.js');
 self.texlive_endpoint = `${packageOrigin}/`;
 // Upstream invokes BibTeX after every successful LaTeX pass, including papers
@@ -64,3 +112,53 @@ function conditionalBibtex(...args) {
 self._compileBibtex = conditionalBibtex;
 let boundedLog = self.memlog;
 Object.defineProperty(self, 'memlog', { get: () => boundedLog, set: (value) => { boundedLog = String(value).slice(-150000); } });
+
+// Snapshot only generated reference files. A changed aux/bbl/toc requires another pass.
+function referenceState() {
+  const files = [];
+  let bytes = 0;
+  function visit(path) {
+    for (const name of self.FS.readdir(path).filter(name => name !== '.' && name !== '..').sort()) {
+      const full = `${path}/${name}`, stat = self.FS.stat(full);
+      if (self.FS.isDir(stat.mode)) visit(full);
+      else if (/\.(aux|bbl|toc|out|lof|lot|nav|snm|vrb)$/.test(name)) {
+        bytes += stat.size;
+        if (bytes > 4 * 1024 * 1024) throw new Error('Reference state too large.');
+        files.push([full, self.FS.readFile(full, { encoding: 'utf8' })]);
+      }
+    }
+  }
+  try { visit('/work'); return JSON.stringify(files); } catch { return null; }
+}
+const post = self.postMessage.bind(self), receive = self.onmessage;
+let beforePass = null;
+self.postMessage = (data, ...rest) => {
+  if (data.cmd === 'compile' && data.result === 'ok') {
+    const after = referenceState();
+    data.needsRerun = beforePass === null || after === null || beforePass !== after || /Rerun to get|Label\(s\) may have changed|Please rerun|rerun LaTeX/i.test(data.log || '');
+  }
+  post(data, ...rest);
+};
+self.onmessage = event => {
+  if (event.data.cmd === 'reset-workspace') {
+    try {
+      self.closeFSStreams();
+      function remove(path) {
+        for (const name of self.FS.readdir(path).filter(name => name !== '.' && name !== '..')) {
+          const full = `${path}/${name}`;
+          if (self.FS.isDir(self.FS.stat(full).mode)) { remove(full); self.FS.rmdir(full); }
+          else self.FS.unlink(full);
+        }
+      }
+      remove('/work');
+      if (self.FS.readdir('/work').some(name => name !== '.' && name !== '..')) throw new Error('Workspace reset incomplete.');
+      beforePass = null;
+      post({ cmd: 'reset-workspace', result: 'ok' });
+    } catch { post({ cmd: 'reset-workspace', result: 'failed' }); }
+    return;
+  }
+  if (event.data.cmd === 'compilelatex') beforePass = referenceState();
+  receive(event);
+};
+}
+void initializeEngine();

@@ -1,9 +1,61 @@
 # Architecture
 
+## Compilation performance follow-up
+
+Each mounted user/project workspace owns a CompilerSession. Engine warm-up starts
+on mount; successful compiles retain the engine and its public package filesystem.
+Before every job, a verified reset removes all files/folders under /work, then
+uploads the full current source manifest. Failures, cancellation, timeout, leaving
+the workspace or detected access loss terminate the worker. Standalone compiler
+calls retain their fresh-worker lifecycle for scripts/tests. No concurrent leases.
+
+The worker loads a best-effort IndexedDB cache of public package responses before
+engine initialization (1.5-second cache-read budget). It stores only responses from
+the allowlisted TeX package endpoint, never source, figures or generated outputs.
+Limits: 64 MiB / 2,048 entries total, 32 MiB per response; positive entries expire
+in seven days, missing public packages in one day. Network errors are not cached.
+The ~10 MB format fits the entry limit. Cache failure falls back to normal fetching.
+
+After each pass, compare generated aux/bbl/toc/out and related reference files;
+stop when unchanged and no rerun warning remains, with the existing three-pass cap.
+Workspace-only figure caching uses immutable Storage paths, is capped at 25 MiB,
+prunes removed references and clears on unmount/access loss. Every compile still
+saves drafts and reloads authorized project/source state before cache use.
+
+
+## PAPER-09: continuous PDF reader
+
+PdfPreview loads per-page geometry once, lays out a continuous document and mounts
+only visible pages plus neighbours (maximum 12). PdfPageSurface owns each cancellable
+canvas, PDF.js TextLayer and allowlisted link overlay. Bitmaps cap their long edge
+at 2048px; thumbnail navigation mounts at most five small canvases. Unmounted pages
+release bitmaps after render cancellation; replaced PDF loading tasks are destroyed.
+Page/fraction anchors restore across scale, resize and document changes. Search
+scans text sequentially and caps results at 1,000 occurrences. UI results/selections
+are bound to the actual PDF bytes. Metadata/search still depend on document size;
+only rendering memory is bounded, not total PDF.js worker memory.
+
+Real engine probing found no SyncTeX primitive/output. Source-to-PDF uses selection
+or current-line literal search; PDF-to-source uses selected-text project search.
+Both require a current compiled source signature. No guessed coordinate mapping.
+
+
+## PAPER-08: source navigation and editing
+
+PaperNavigation indexes current draft text through pure editor-tools helpers.
+Literal input/include traversal is cycle-safe; dynamic TeX is not evaluated.
+Search results carry source offsets and expected content, rejecting stale jumps.
+SourceEditor uses CodeMirror compartments for theme/preferences, retaining history.
+ReplaceProjectDialog loads a coherent saved manifest and previews literal changes;
+applyPaperTree submits that original revision to the existing atomic manifest RPC.
+No separate draft store, SQL migration or dependency is introduced. Preferences
+are version-tolerant, bounded local settings keyed by user, with no source content.
+
+
 ## PAPER-07: compiler contract
 
 PaperPage captures the saved manifest/main-file revision, hydrates figures with an
-AbortSignal and launches a fresh compiler worker. A three-minute preparation/job
+AbortSignal and acquires a clean workspace compiler job. A three-minute preparation/job
 deadline complements the two-minute engine timeout. Cancelling a compile stops
 waiting for draft saves without aborting the draft store's durable save operation.
 Only the current uncancelled job may publish output. PDF output retains its source
@@ -13,7 +65,7 @@ signature, revision and main file; edits mark it stale rather than discard it.
 reported project-file locations. `CompileDiagnostics.tsx` exposes repairs, source
 navigation and raw logs. Stale diagnostics cannot jump to outdated lines. The
 worker adapter reports dependency network failures without receiving auth tokens.
-Fresh workers isolate auxiliary files; no project-output caching was introduced.
+Verified workspace resets isolate auxiliary files; no project-output caching is used.
 
 
 ## PAPER-06: manuscript history

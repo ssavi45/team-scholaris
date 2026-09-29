@@ -3,6 +3,22 @@ export type CompileIssue = {
   file?: string; line?: number; context: string; count: number;
 }
 
+export function describeCompileIssue(issue: CompileIssue): { title: string; explanation: string } {
+  const message = issue.message
+  if (/Underfull.*\\hbox/i.test(message)) return { title: 'Loose spacing in a paragraph', explanation: 'LaTeX stretched a line to fit the column. Check the PDF; if the spacing looks fine, no change is needed.' }
+  if (/Overfull.*\\hbox/i.test(message)) return { title: 'Content extends past the margin', explanation: 'A line, equation or table is wider than the available space. Check the PDF near this location.' }
+  if (/Underfull.*\\vbox/i.test(message)) return { title: 'Extra vertical space on a page', explanation: 'LaTeX could not fill the available page height evenly. Check the page spacing in the PDF.' }
+  if (/Overfull.*\\vbox/i.test(message)) return { title: 'Content exceeds the page height', explanation: 'A block is taller than the available space. Check for content below the page margin.' }
+  if (/Citation .*undefined|didn't find a database entry/i.test(message)) return { title: 'Citation could not be found', explanation: issue.hint }
+  if (/Reference .*undefined|undefined references/i.test(message)) return { title: 'Unresolved reference', explanation: issue.hint }
+  if (/Undefined control sequence/i.test(message)) return { title: 'Unrecognized LaTeX command', explanation: issue.hint }
+  if (/Empty.*thebibliography/i.test(message)) return { title: 'The reference list is empty', explanation: issue.hint }
+  if (/database file|bibdata|\.bib.*not found/i.test(message)) return { title: 'Bibliography file is missing or not configured', explanation: issue.hint }
+  if (/File .*not found/i.test(message)) return { title: 'A required file is missing', explanation: issue.hint }
+  if (/Unicode character|inputenc/i.test(message)) return { title: 'A character is not supported by this compiler', explanation: issue.hint }
+  return { title: issue.severity === 'error' ? 'LaTeX needs a source correction' : 'LaTeX reported a warning', explanation: issue.hint }
+}
+
 function advice(message: string) {
   if (/didn't find a database entry|Citation .*undefined/i.test(message)) return 'Check that the citation key exists exactly in the .bib file selected by \\bibliography, then recompile.'
   if (/database file|bibdata|\.bib.*not found/i.test(message)) return 'Check the bibliography filename and path. Upload the .bib file and use its path without the extension in \\bibliography.'

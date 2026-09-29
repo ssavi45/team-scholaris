@@ -1,24 +1,46 @@
 import { useState } from 'react'
-import type { CompileIssue } from './compile-diagnostics'
+import { AlertTriangle, CheckCircle2, CircleAlert, ChevronDown, FileCode2, X } from 'lucide-react'
+import { describeCompileIssue, type CompileIssue } from './compile-diagnostics'
 import './compile-diagnostics.css'
 
-export function CompileDiagnostics({ issues, log, status, stale, jump, summary }: {
+export function CompileDiagnostics({ issues, log, status, outcome, compiling, stale, jump, summary, close }: {
   issues: CompileIssue[]; log: string; status: string; stale: boolean;
-  jump: (issue: CompileIssue) => void; summary: string;
+  outcome: 'idle' | 'success' | 'failed' | 'cancelled'; compiling: boolean;
+  jump: (issue: CompileIssue) => void; summary: string; close: () => void;
 }) {
-  const [selected, setSelected] = useState(0)
-  const index = Math.min(selected, Math.max(0, issues.length - 1))
-  const issue = issues[index]
-  return <section id="compile-log" className="compile-diagnostics" aria-label="Compilation diagnostics">
-    <div className="diagnostic-heading"><strong role="status">{status}</strong><span>{summary}</span></div>
-    {stale && <p>These diagnostics describe the compiled snapshot. Source has changed; recompile for current locations.</p>}
-    {!!issues.length && <><div className="diagnostic-navigation"><button className="tool-button" disabled={index === 0} onClick={() => setSelected(index - 1)}>Previous issue</button><span>{index + 1} / {issues.length}</span><button className="tool-button" disabled={index === issues.length - 1} onClick={() => setSelected(index + 1)}>Next issue</button></div>
-      <article className={`diagnostic-issue ${issue.severity}`}><strong>{issue.severity === 'error' ? 'Error' : 'Warning'}{issue.count > 1 ? ` (${issue.count} occurrences)` : ''}: {issue.message}</strong><p>{issue.hint}</p>
-        {issue.file && issue.line ? <button className="button secondary compact-button" disabled={stale} onClick={() => jump(issue)}>{issue.file}:{issue.line} — Go to source</button> : <p>Exact source location unavailable. See log context below.</p>}
-        <details><summary>Log context</summary><pre>{issue.context}</pre></details>
-      </article></>}
-    {!issues.length && <p>{log ? 'No recognized errors or warnings. The raw log may contain additional engine messages.' : 'No engine log yet.'}</p>}
-    <details><summary>Raw compiler log</summary><pre>{log || 'Compile your paper to see engine output.'}</pre></details>
-    <p>Compiles in your browser. Each rebuild uses a fresh compiler filesystem. <a href={`${import.meta.env.BASE_URL}vendor/swiftlatex/NOTICE.txt`} target="_blank" rel="noreferrer">Compiler credits</a></p>
+  const [tab, setTab] = useState<'issues' | 'log'>('issues')
+  const errors = issues.filter(issue => issue.severity === 'error')
+  const warnings = issues.filter(issue => issue.severity === 'warning')
+  const ordered = [...errors, ...warnings]
+  const title = compiling ? 'Compiling your paper…' : outcome === 'failed' ? 'Compilation failed' : outcome === 'cancelled' ? 'Compilation cancelled' : outcome === 'success' ? errors.length ? 'PDF created — errors need attention' : 'PDF ready' : 'Compilation report'
+  const description = compiling ? status : outcome === 'failed' ? 'Fix the reported problem, then recompile.' : outcome === 'cancelled' ? 'This build was stopped. Recompile when you are ready.' : outcome === 'success' ? errors.length ? 'Review these errors before using this PDF.' : warnings.length ? 'Your PDF is available. Review the warnings below for possible improvements.' : 'No recognized errors or warnings.' : 'Compile your paper to see the results here.'
+  const StatusIcon = outcome === 'failed' || errors.length ? CircleAlert : outcome === 'success' ? CheckCircle2 : FileCode2
+  return <section id="compile-log" className="compile-diagnostics" aria-label="Compilation report">
+    <header className="diagnostic-header">
+      <div className={errors.length || outcome === 'failed' ? 'diagnostic-result has-errors' : 'diagnostic-result'}><StatusIcon size={18} aria-hidden="true" /><div><strong role="status">{title}</strong><p>{description}</p></div></div>
+      <button className="tool-button diagnostic-close" aria-label="Close compilation report" title="Close compilation report" onClick={close}><X size={17} /></button>
+    </header>
+    <div className="diagnostic-tabs" role="group" aria-label="Compilation report view">
+      <button aria-pressed={tab === 'issues'} onClick={() => setTab('issues')}>Issues <span>{issues.length}</span></button>
+      <button aria-pressed={tab === 'log'} onClick={() => setTab('log')}>Full log</button>
+      {!!issues.length && <span className="diagnostic-counts">{errors.length} {errors.length === 1 ? 'error' : 'errors'} · {warnings.length} {warnings.length === 1 ? 'warning' : 'warnings'}</span>}
+    </div>
+    <div className="diagnostic-body">
+      {stale && <p className="diagnostic-stale">Source changed since this build. Recompile to update issues and source links.</p>}
+      {tab === 'issues' ? <>
+        {ordered.length ? <div className="diagnostic-list">{ordered.map((issue, index) => {
+          const readable = describeCompileIssue(issue)
+          const IssueIcon = issue.severity === 'error' ? CircleAlert : AlertTriangle
+          return <details className={'diagnostic-item ' + issue.severity} key={index + ':' + issue.message}>
+            <summary><IssueIcon size={15} aria-hidden="true" /><span className="diagnostic-item-title">{readable.title}</span><span className="diagnostic-location">{issue.file && issue.line ? issue.file + ':' + issue.line : 'Location unavailable'}</span><ChevronDown className="diagnostic-chevron" size={14} aria-hidden="true" /><span className="sr-only">{issue.severity}</span></summary>
+            <div className="diagnostic-item-body"><p>{readable.explanation}</p>
+              {issue.file && issue.line && <button className="diagnostic-source" disabled={stale || compiling} onClick={() => jump(issue)}><FileCode2 size={14} />Open {issue.file}, line {issue.line}</button>}
+              <details className="diagnostic-technical"><summary>Technical details{issue.count > 1 ? ' · reported ' + issue.count + ' times' : ''}</summary><pre>{issue.message}{issue.context && '\n\nLog context:\n' + issue.context}</pre></details>
+            </div>
+          </details>
+        })}</div> : <p className="diagnostic-empty">{outcome === 'failed' ? 'No source issue could be identified. Check the error above or open Full log for details.' : log ? 'Nothing to review. The full compiler output is available in Full log.' : 'No compiler messages yet.'}</p>}
+      </> : <pre className="diagnostic-raw" tabIndex={0} aria-label="Full compiler output">{log || 'No compiler output for this build.'}</pre>}
+      <details className="diagnostic-build-details"><summary>Build details</summary><p>{summary || 'No build details yet.'}</p><p>Compiled in your browser. <a href={import.meta.env.BASE_URL + 'vendor/swiftlatex/NOTICE.txt'} target="_blank" rel="noreferrer">Compiler credits</a></p></details>
+    </div>
   </section>
 }

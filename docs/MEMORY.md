@@ -1,8 +1,110 @@
 # Project memory
 
-Last updated: **2026-09-28**, after PAPER-06 and PAPER-07 implementation.
+Find & replace no longer flex-shrinks against the editor, which clipped the
+replacement row. Its natural height can grow up to 320px (bounded by half the
+editor/45dvh), with vertical scrolling for smaller panes.
 
-## Current position
+PDF toolbar now groups chevron page navigation around a centered current/total
+page box. Direct page entry uses numeric text input without number spinners.
+Zoom appears once in its selector (fit modes include their actual percentage);
+navigation, zoom and view tools have separate groups and labelled hover targets.
+
+Compiler options now separate read-only compiler/main-file information from three
+bordered action buttons: Choose main file, Restart & recompile, View compilation
+report. Buttons include descriptions, icons, hover/focus feedback and disabled
+reasons. Compatibility/cache information is collapsed. Actions dismiss the menu;
+Escape, outside-click and focus departure also close it. Visual acceptance pending.
+
+## Compilation report clarity
+
+Replaced issue-by-issue pagination with compact expandable rows, errors first.
+Build outcome is explicit (PDF ready, failed, cancelled or compiling); warnings
+do not imply PDF failure. Common TeX messages have plain-language titles and
+guidance. Original messages/context live under Technical details, full output
+has its own view, and timings/revision/credits are under Build details. Source
+links remain guarded against stale source; report header stays visible while
+its body scrolls. Manual visual acceptance remains pending.
+
+## PDF preview recovery
+
+Fixed a PDF surface ownership race: StrictMode replay or delayed cancellation could
+zero the canvas already reused by a newer render. Each effect now owns a separate
+canvas and releases only that bitmap; shared page resources stay with the document.
+Warning-only compiles leave the PDF visible. Errors still open diagnostics; the
+drawer is height-bounded and has an explicit close action and labelled Issues button.
+Lifecycle regression and PDF helper checks passed. Browser connection unavailable;
+confirm the reported black preview is gone in both themes after refreshing.
+
+## Compilation speed follow-up
+
+Implemented workspace engine prewarming/reuse, persistent bounded public package
+caching (including negative lookups and the ~10 MB format), generated-reference
+stability checks to avoid unnecessary third passes, and workspace-only caching of
+unchanged figures. Every new compile still clears /work and rechecks project/source
+authorization. Cancellation/failure/access loss retires the engine; Restart compiler
+and rebuild clears the workspace engine/figure caches for recovery.
+
+Observed local Node/WASM harness timings for a small paper: old-style fresh engine
+with three passes 1,404 ms; ready-engine first compile 947 ms (two passes); one-line
+edit 575 ms (two passes), with no repeated package requests. These are not browser
+cold-network measurements. First-ever package downloads still take network time.
+Real compiler/corpus tests cover bibliography, nested source, figures, errors and
+isolation. Persistent package-cache behavior is tested with a storage double;
+browser cache/performance acceptance remains manual.
+
+
+## Editor UI follow-up
+
+Consolidated the two editor action rows into one labelled toolbar. File actions
+moved into File; Insert uses descriptive template names; secondary commands live
+in Tools; Editor settings includes readable preferences and shortcut help. Native
+disclosures support outside-click/focus/Escape dismissal. CodeMirror search now
+opens above the source, with scoped compact checkbox/input styles and plain labels.
+The oversized search panel came from global form styles leaking into CodeMirror.
+Build passed; visual browser verification remains pending (no browser available).
+
+
+Last updated: **2026-09-29**, after PAPER-09 implementation.
+
+## PAPER-09 handoff
+
+The PDF viewer now scrolls continuously. Metadata establishes page-sized slots;
+only nearby canvases/text/link layers mount, with bitmap size caps and cancellation.
+Page/relative offset, zoom and rotation survive recompiles; shorter outputs clamp.
+Added selectable text, occurrence search/highlighting, actual zoom display, direct
+page entry, keyboard zoom, nearby thumbnails, PDF bookmarks and safe link overlays.
+Accessible page text remains available. Source/PDF text lookup is explicitly
+approximate and disabled when output is stale; selections/search bind to PDF bytes.
+
+The real engine probe compiled a nested main, include and bibliography, reported
+SCHOLARIS-SYNCTEX-UNAVAILABLE, and produced no SyncTeX file. Exact coordinate mapping
+is therefore not offered. Separate-window preview remains gated on its lifecycle.
+No production compiler changes, migrations or dependencies were introduced.
+
+Passed: lint/build, PDF helper geometry/anchor/search/safe-link tests, and a real
+12-page PDF integration covering occurrence search, outline destinations and link
+annotations. Existing large-chunk warning remains. Browser discovery returned no
+browser: visual selection alignment, real scrolling and mobile/theme acceptance
+remain manual. Next increment is PAPER-10 after acceptance.
+
+## PAPER-08 handoff
+
+Implemented Files/Outline/Search, literal project search including drafts, precise
+result selection, quick file switching, go-to-line, reveal file and tab reopening.
+CodeMirror retains per-file cursor/scroll/history in this workspace session.
+Dirty/conflict markers reuse the draft store. Added snippets/completion, comment
+and compile shortcuts, options/help and approximate current-file word counts.
+User/device preferences cover font, wrap, indentation and layout. Search/replacement
+is literal, bounded and case-selectable. Multi-file replacement previews coherent
+saved source and applies via the existing atomic revision-checked manifest RPC;
+unsaved/conflicted/recovery/offline state blocks apply. No new migration/dependency.
+
+Passed: npm lint/build, editor helper and snippet undo/read-only tests, draft/export
+checks and local rollback-only history permission/revision checks. Build retains
+its existing large-chunk warning. No browser was available: keyboard, mobile,
+theme switching and full UI replacement acceptance remain manual.
+
+## Previous position
 
 PAPER-07 follow-up: the worker now inspects generated main/included auxiliary
 files before running BibTeX. Papers without external bibliography commands,
@@ -23,7 +125,9 @@ explicit source links where the engine reports a reliable location. Source chang
 disable stale diagnostic jumps. The last good PDF survives failure/cancellation;
 results record revision/main file and show preparation/figure/engine timings.
 Every rebuild uses a fresh worker filesystem; optional compile-on-save is deferred.
-Google Meet remains paused. Next functional increment is PAPER-08 after acceptance.
+Google Meet was reported resolved by the user on 2026-09-29. No Google code was
+changed or live Google flow verified during PAPER-08. Older paused-state notes
+below are historical. Next functional increment is PAPER-10 after PAPER-09 acceptance.
 
 Verification: history authorization/quotas/restore rollback checks, authenticated
 Storage + restored-paper WASM compilation, source diff, draft and export checks,

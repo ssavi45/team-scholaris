@@ -1,5 +1,37 @@
 # Security requirements
 
+## Compiler cache boundaries
+
+Persistent compiler storage contains allowlisted public package responses only.
+Generated document files are excluded from network cache lookup/storage. Private
+figures are cached only in memory within the current workspace, after fresh project
+and manifest authorization reads, using immutable object paths. Access loss and
+workspace teardown clear figures and stop the engine. /work is fully removed and
+verified before each reused-engine job. Cache read/write failure must not bypass
+validation or authorization. No credentials enter the compiler worker.
+
+
+## PDF reading boundary
+
+Render locally generated PDF bytes with the installed PDF.js worker. Never interpret
+PDF JavaScript, actions, embedded attachments or arbitrary annotation HTML. Link
+controls are created through DOM APIs: permit HTTP(S)/mailto URLs only, use
+noopener/noreferrer for external tabs, and resolve internal PDF destinations through
+PDF.js. Text and bookmark titles render as text. Search has a 1,000-result bound;
+rendering uses a capped canvas window and bitmap dimensions. No new public preview
+URL, storage bucket, auth bypass or cross-window message channel is introduced.
+
+
+## Project search and replacement
+
+Search uses already-authorized paper source; no external indexing service receives
+manuscripts. Literal regex escaping avoids user-supplied regex execution. Results
+are capped at 500 and replacement at 10,000 occurrences. Preview is not authority:
+the manifest RPC rechecks identity, permissions, active project, revision and limits
+under its existing transaction/lock. Dirty drafts, recovery problems and offline
+state block frontend apply. Failed/stale operations never retry automatically.
+
+
 ## Manuscript history boundary
 
 History bodies are server-written and returned only to verified current project

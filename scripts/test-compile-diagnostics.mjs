@@ -2,7 +2,18 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import ts from 'typescript'
 const load = async file => import('data:text/javascript;base64,' + Buffer.from(ts.transpileModule(await readFile(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 } }).outputText).toString('base64'))
-const { parseCompileDiagnostics: parse } = await load('src/features/paper/compile-diagnostics.ts')
+const { parseCompileDiagnostics: parse, describeCompileIssue } = await load('src/features/paper/compile-diagnostics.ts')
+for (const [message, title] of [
+  [String.raw`Underfull \hbox (badness 1460) at lines 41--42`, 'Loose spacing in a paragraph'],
+  [String.raw`Overfull \hbox (2pt too wide)`, 'Content extends past the margin'],
+  [String.raw`Underfull \vbox (badness 10000)`, 'Extra vertical space on a page'],
+  ['LaTeX Warning: Citation missing undefined', 'Citation could not be found'],
+]) {
+  const issue = { message, severity: 'warning', hint: 'Check source', count: 1 }
+  const original = { ...issue }
+  assert.equal(describeCompileIssue(issue).title, title)
+  assert.deepEqual(issue, original, 'presentation must preserve original diagnostics')
+}
 const paths = ['main.tex', 'sections/chapter.tex', 'references.bib']
 let issues = parse('(main.tex\n(./sections/chapter.tex\n! Undefined control sequence.\nl.8 \\unknown\n)\nLaTeX Warning: Citation `missing\' on page 1 undefined on input line 12.\n\n)', paths)
 assert.equal(issues[0].file, 'sections/chapter.tex'); assert.equal(issues[0].line, 8)

@@ -1,15 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FileText, Folder, FolderPlus, FilePlus2, MoreHorizontal, Plus, Search, X } from 'lucide-react'
 import type { PaperFile } from './paper-api'
 
 export type ManageRequest = { path?: string; kind?: 'text' | 'folder' }
 
-export function PaperExplorer({ files, selected, mainFile, editable, disabled, choose, manage, close }: {
+export function PaperExplorer({ files, selected, mainFile, editable, disabled, choose, manage, close, revealToken }: {
   files: PaperFile[]; selected?: string; mainFile: string; editable: boolean; disabled: boolean;
   choose: (file: PaperFile) => void; manage: (request?: ManageRequest) => void; close: () => void
+  revealToken: number
 }) {
-  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState({ text: '', generation: revealToken })
+  const query = filter.generation === revealToken ? filter.text : ''
+  const setQuery = (text: string) => setFilter({ text, generation: revealToken })
   const [context, setContext] = useState<string | null>(null)
+  const treeRoot = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!revealToken) return
+    const node = treeRoot.current?.querySelector<HTMLElement>('[aria-current=true]')
+    if (!node) return
+    let parent = node.parentElement
+    while (parent && parent !== treeRoot.current) { if (parent instanceof HTMLDetailsElement) parent.open = true; parent = parent.parentElement }
+    node.scrollIntoView({ block: 'nearest' }); node.focus()
+  }, [revealToken])
   const visible = files.filter(file => file.path.toLowerCase().includes(query.toLowerCase()))
   function tree(prefix = '') {
     const folders = [...new Set(visible.filter(file => file.path.startsWith(prefix) && (file.kind === 'folder' || file.path.slice(prefix.length).includes('/')))
@@ -37,7 +49,7 @@ export function PaperExplorer({ files, selected, mainFile, editable, disabled, c
       <button disabled={disabled} onClick={() => manage()}>Upload / import / organize...</button>
     </div></details>}<button className="tool-button" aria-label="Collapse explorer" onClick={close}><X size={16} /></button></div>
     <label className="paper-file-filter"><Search size={15} /><span className="sr-only">Filter paper files</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Find a file..." type="search" /></label>
-    <div className="paper-tree-scroll">{visible.length ? tree() : <p className="muted">No matching files.</p>}</div>
+    <div ref={treeRoot} className="paper-tree-scroll">{visible.length ? tree() : <p className="muted">No matching files.</p>}</div>
     {disabled && editable && <p className="paper-explorer-hint">Finish saving and review drafts before organizing files.</p>}
     <div className="paper-entry" title="Compilation entry point"><FileText size={14} /><span>{mainFile}</span></div>
   </>

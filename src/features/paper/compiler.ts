@@ -1,5 +1,5 @@
 export type SourceFile = { path: string; content: string; kind?: 'text' | 'folder' | 'image'; storage_path?: string | null; bytes?: Uint8Array<ArrayBuffer> }
-export type Compilation = { pdf: Uint8Array<ArrayBuffer>; log: string; signature: string }
+export type Compilation = { pdf: Uint8Array<ArrayBuffer>; log: string; signature: string; passes?: number }
 export class CompileError extends Error {
   log: string
   constructor(message: string, log = '') { super(message); this.name = 'CompileError'; this.log = log }
@@ -45,7 +45,8 @@ export function validateSources(files: SourceFile[], mainFile: string | null = '
   }
 }
 
-// A fresh worker gives each job an isolated memory filesystem. No project credentials enter it.
+// Standalone calls use a fresh worker. Workspace sessions lease a reset worker with public packages retained.
+// No project credentials enter either worker.
 export async function compilePaper(files: SourceFile[], signal: AbortSignal, progress: (status: string) => void,
   workerFactory = () => new Worker(`${import.meta.env.BASE_URL}vendor/swiftlatex/scholaris-worker.js`), timeoutMs = 120000, mainFile = 'main.tex'): Promise<Compilation> {
   validateSources(files, mainFile)
@@ -89,7 +90,7 @@ export async function compilePaper(files: SourceFile[], signal: AbortSignal, pro
             worker.postMessage({ cmd: 'writefile', url: entryPoint, src: `\\input{${mainFile}}\n` })
           }
           worker.postMessage({ cmd: 'setmainfile', url: entryPoint })
-          pass = 1; progress('Typesetting, pass 1 of 3...'); worker.postMessage({ cmd: 'compilelatex' })
+          pass = 1; progress('Typesetting, pass 1...'); worker.postMessage({ cmd: 'compilelatex' })
           return
         }
         if (data.result === 'failed' && data.cmd !== 'compile') { reject(new CompileError('Unable to load a source file into the compiler.')); return }
@@ -98,13 +99,74 @@ export async function compilePaper(files: SourceFile[], signal: AbortSignal, pro
         if (data.result !== 'ok' || data.status !== 0 || !(data.pdf instanceof ArrayBuffer)) {
           reject(new CompileError('LaTeX could not build this paper. Review the compilation log below.', log)); return
         }
-        if (pass < 3) { pass++; progress(`Resolving references, pass ${pass} of 3...`); worker.postMessage({ cmd: 'compilelatex' }); return }
+        if (pass < 3 && data.needsRerun !== false) { pass++; progress(`Resolving references, pass ${pass}...`); worker.postMessage({ cmd: 'compilelatex' }); return }
         const pdf = new Uint8Array(data.pdf)
         if (pdf.length > 20 * 1024 * 1024 || new TextDecoder().decode(pdf.slice(0, 5)) !== '%PDF-') { reject(new CompileError('The compiler did not produce a supported PDF.', log)); return }
-        resolve({ pdf, log, signature: sourceSignature(files, mainFile) })
+        resolve({ pdf, log, signature: sourceSignature(files, mainFile), passes: pass })
       }
     })
   } finally {
     clearTimeout(timer); signal.removeEventListener('abort', abort); worker.terminate()
   }
+}
+
+/** Workspace-owned engine: retain public packages, never reuse paper output between jobs. */
+export function createCompilerSession(factory = () => new Worker(`${import.meta.env.BASE_URL}vendor/swiftlatex/scholaris-worker.js`)) {
+  let worker: Worker | null = null
+  let ready = false, running = false
+  let client: Worker | null = null
+  let warming: Promise<void> | null = null
+  let rejectWarm: ((reason: Error) => void) | null = null
+  let warmTimer: ReturnType<typeof setTimeout> | undefined
+  function dispose() {
+    const active = client
+    client = null
+    worker?.terminate(); worker = null; ready = false; warming = null
+    clearTimeout(warmTimer)
+    rejectWarm?.(new DOMException('Compiler session closed.', 'AbortError')); rejectWarm = null
+    active?.onerror?.({ message: 'Compiler session closed.' } as ErrorEvent)
+  }
+  function warm() {
+    if (ready) return Promise.resolve()
+    if (warming) return warming
+    warming = new Promise<void>((resolve, reject) => {
+      rejectWarm = reject
+      try {
+        const engine = factory(); worker = engine
+        warmTimer = setTimeout(() => { reject(new Error('Engine warm-up timed out.')); dispose() }, 30000)
+        engine.onmessage = event => {
+          if (worker !== engine) return
+          if (!ready && event.data.result === 'ok' && !event.data.cmd) { ready = true; clearTimeout(warmTimer); rejectWarm = null; resolve(); return }
+          if (event.data.cmd === 'reset-workspace' && event.data.result === 'ok') {
+            client?.onmessage?.({ data: { result: 'ok' } } as MessageEvent); return
+          }
+          client?.onmessage?.(event)
+        }
+        engine.onerror = event => { if (client) client.onerror?.(event); else { reject(new Error('Engine failed to load.')); dispose() } }
+        engine.onmessageerror = event => { if (client) client.onmessageerror?.(event); else { reject(new Error('Engine response could not be read.')); dispose() } }
+      } catch (cause) { reject(cause); worker = null }
+    })
+    // Prewarming is optional; failures must not become unhandled rejections.
+    const pending = warming
+    void pending.catch(() => { if (warming === pending && !ready) warming = null })
+    return warming
+  }
+  async function compile(files: SourceFile[], signal: AbortSignal, progress: (text: string) => void, timeoutMs = 120000, main = 'main.tex') {
+    if (running) throw new CompileError('A compilation is already running.')
+    validateSources(files, main); signal.throwIfAborted(); running = true
+    try {
+      progress(ready ? 'Using ready LaTeX engine...' : 'Loading LaTeX engine...')
+      await waitForPreparation(warm(), signal)
+      signal.throwIfAborted()
+      return await compilePaper(files, signal, progress, () => {
+        // compilePaper owns the lease; the workspace owns the underlying engine.
+        const lease = { postMessage: (data: unknown) => worker?.postMessage(data), terminate: () => { client = null } } as Worker
+        client = lease
+        worker!.postMessage({ cmd: 'reset-workspace' })
+        return lease
+      }, timeoutMs, main)
+    } catch (cause) { dispose(); throw cause }
+    finally { running = false }
+  }
+  return { warm, compile, dispose }
 }

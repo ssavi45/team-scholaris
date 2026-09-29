@@ -1,10 +1,55 @@
 # Paper workspace roadmap and build tracker
 
-Last updated: 2026-09-28. **PAPER-06 and PAPER-07 implemented locally; manual visual acceptance pending.**
+Last updated: 2026-09-29. **PAPER-09 continuous reader implemented locally; manual visual acceptance pending.**
 This is the only task tracker. Current product focus: make Paper the reason a
 research team chooses Scholaris. Previous delivery records remain below.
 
-## Current handoff: PAPER-06 and PAPER-07
+## Current handoff: PAPER-09
+
+- [x] PDF toolbar: grouped chevrons/page box, no numeric spinners, single zoom
+  display and clearly separated view actions. Manual visual acceptance pending.
+
+- [x] Compiler menu: separate information from bordered, labelled action buttons;
+  concise help, disabled reasons and keyboard/outside-click dismissal.
+
+- [x] Clean compilation report: explicit outcome, readable expandable issue list,
+  errors first, source actions, separate full log and collapsed technical details.
+- [ ] Manual acceptance of compilation report in both themes and narrow panes.
+
+- [x] Fix PDF canvas cleanup race during StrictMode replay/render replacement;
+  add lifecycle regression coverage and compact, dismissible diagnostics.
+- [ ] Manually confirm black-preview recovery after refresh, including zoom,
+  rotation, thumbnails and warning-only recompilation.
+
+- [x] Compile-speed follow-up: warm workspace engine, persistent public package cache,
+  adaptive reference passes and unchanged-figure reuse; verified clean /work resets.
+- [x] Real-engine session/corpus checks and cache-policy tests; benchmark recorded in MEMORY.
+- [ ] Browser cold/warm/reload timing and blocked-storage acceptance.
+
+
+- [x] UI follow-up: one clear writing toolbar, descriptive action menus and compact
+  top-mounted Find & replace; isolate search checkboxes from global form styles.
+- [ ] Manual acceptance of revised toolbar/menu/search layout in both themes.
+
+
+- [x] Continuous scrolling, bounded nearby-page canvases and selectable text.
+- [x] Reading anchor/zoom recovery, direct page jump, fit/rotation/full-screen controls.
+- [x] Occurrence search with highlighting, bookmarks/thumbnails and safe PDF links.
+- [x] Compiled-output-bound source/text lookup with explicit stale-PDF protection.
+- [x] Real SyncTeX probe: primitive unavailable and no mapping output from this engine.
+- [x] Helper geometry/search/security checks and real 12-page PDF integration passed.
+- [ ] Manual scrolling, selection, keyboard, light/dark and 375/768/1440px acceptance.
+
+Exact mapping and a separate preview window remain gated. Next increment is PAPER-10
+following acceptance; PAPER-10 was not started.
+
+## Previous handoff: PAPER-08
+
+Implemented editor navigation, project search/replacement, snippets and preferences.
+See the PAPER-08 section below for delivered scope and pending manual acceptance.
+PAPER-08 remains available; its previous verification record is retained below.
+
+## Previous handoff: PAPER-06 and PAPER-07
 
 - [x] Fix unconditional BibTeX execution: inspect generated main/included aux files,
   skip unrequested bibliography processing and retain genuine configuration errors.
@@ -20,7 +65,8 @@ research team chooses Scholaris. Previous delivery records remain below.
 - [ ] Manual light/dark, mobile and keyboard acceptance of history and diagnostics.
 - [ ] Optional compile-on-save: deferred until manual compilation acceptance; no automatic jobs enabled.
 
-Next functional build: PAPER-08, after the user's acceptance. Google Meet remains paused.
+PAPER-08 is implemented below. PAPER-09 follows below; next functional build is PAPER-10 after acceptance.
+Google Meet was reported resolved by the user on 2026-09-29; its implementation was not changed in PAPER-08.
 
 ## Previous build: dedicated Paper writing environment
 
@@ -239,46 +285,58 @@ cancelling never loses edits. Record timings and browser/device/network conditio
 
 **User story:** "Let me move around a long paper and write without repetitive clicks."
 
-- [ ] Open-file tabs with dirty/conflict markers, close/reopen actions and restored
+- [x] Open-file tabs with dirty/conflict markers, close/reopen actions and restored
   cursor/scroll. Build on 05's document store rather than a second draft model.
-- [ ] Files/Outline/Search sidebar modes; outline headings across supported input
+- [x] Files/Outline/Search sidebar modes; outline headings across supported input
   files, quick file switch, go-to-line and reveal current file. Handle recursive
   inputs and macros conservatively; do not promise a complete TeX parser.
-- [ ] Expose existing find/replace; add project-wide search with path/line results.
+- [x] Expose existing find/replace; add project-wide search with path/line results.
   Multi-file replace requires preview and version-safe apply, respecting dirty drafts.
-- [ ] LaTeX snippets and completion for common commands/environments; shortcut/help
+- [x] LaTeX snippets and completion for common commands/environments; shortcut/help
   menu for bold/italic, section, list, equation, comment and compile. Insert source
   at the cursor with undo support; avoid rewriting unrelated formatting.
-- [ ] Persist font size, wrap, indentation, split ratio, sidebar and focused-writing
+- [x] Persist font size, wrap, indentation, split ratio, sidebar and focused-writing
   preference. Restore layout by user/device; handle small screens safely.
-- [ ] Approximate source-aware word count labelled as approximate, not a publisher's
+- [x] Approximate source-aware word count labelled as approximate, not a publisher's
   authoritative count. Keep code/math/comments from inflating the obvious cases.
 
 **Acceptance:** Keyboard-only navigation across a multi-chapter fixture; project
 search opens exact results; snippets undo cleanly; switching theme/files preserves
 cursor/history; no clipping at 375/768/1440px. Advanced spellcheck is follow-up work.
 
+**Verification:** lint, production build, editor helper/undo tests, drafts, export,
+and local rollback-only history safeguards passed. Existing bundle warning remains.
+- [ ] Manual browser acceptance of the scenarios above (no browser available to agent).
+
 ## PAPER-09 ? PDF reading and source navigation
 
 **User story:** "Keep me on the paragraph I am fixing when I recompile."
 
-- [ ] Preserve page/relative scroll and zoom across recompiles; clamp gracefully if
+- [x] Preserve page/relative scroll and zoom across recompiles; clamp gracefully if
   the document becomes shorter. Add direct page entry, real zoom labels and fit modes.
-- [ ] Add selectable/searchable PDF text, match navigation, safe links, page
+- [x] Add selectable/searchable PDF text, match navigation, safe links, page
   thumbnails/outline and lazy continuous scrolling with bounded canvas memory.
   Retain the accessible text alternative and genuine white paper in both themes.
-- [ ] Prototype source-to-PDF and PDF-to-source mapping using actual engine output.
+- [x] Prototype source-to-PDF and PDF-to-source mapping using actual engine output.
   Verify whether this SwiftLaTeX build can emit usable SyncTeX before committing
   to exact mapping. Test nested mains, included files and generated bibliography.
-- [ ] Bind mappings to the compiled snapshot. Mark source/PDF differences and
+- [x] Bind mappings to the compiled snapshot. Mark source/PDF differences and
   disable or qualify stale mappings. If exact mapping is unavailable, offer
   explicitly labelled text-search navigation, not fake SyncTeX behavior.
-- [ ] Add optional separate preview window only after its authenticated state,
-  update/disconnect and memory lifecycle are defined.
+- [ ] Gated follow-up: separate preview window. Not enabled; authenticated update,
+  disconnect/revocation and cross-window memory lifecycle need their own acceptance.
 
 **Acceptance:** Recompile while reading page 8, shrink to 3 pages, search/copy text,
 follow a citation link, zoom with keyboard, and test long-document memory use.
 Exact mapping is a gated subfeature, not a prerequisite for the improved reader.
+
+Implementation evidence (2026-09-29): continuous vertical document with up to 12
+nearby full-size canvases and five nearby thumbnails; every bitmap has a 2048px
+long-edge cap. Search returns up to 1,000 literal occurrences. Internal references
+navigate to the real destination page; external links allow HTTP(S)/mailto only.
+A real nested-main/include/BibTeX probe reported SYNCTEX-UNAVAILABLE and no output.
+Text search is the explicit fallback, not coordinate mapping. Reading state lasts
+for the mounted workspace session. No separate window or compiler change shipped.
 
 ## PAPER-10 ? References that do not require guesswork
 

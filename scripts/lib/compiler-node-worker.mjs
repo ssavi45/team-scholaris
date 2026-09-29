@@ -48,4 +48,17 @@ const importScript = () => {
 }
 context.importScripts = importScript
 runInContext(readFileSync(join(vendor, 'scholaris-worker.js'), 'utf8'), context)
-parentPort.on('message', (data) => context.onmessage({ data }))
+parentPort.on('message', (data) => {
+  if (data.cmd === 'inspect-synctex') {
+    const entries = []
+    function inspect(path) {
+      for (const name of context.FS.readdir(path).filter(name => name !== '.' && name !== '..')) {
+        const full = `${path}/${name}`
+        if (context.FS.isDir(context.FS.stat(full).mode)) inspect(full)
+        else if (/\.synctex(?:\.gz)?$/.test(name)) entries.push({ path: full, bytes: context.FS.stat(full).size })
+      }
+    }
+    inspect('/work'); parentPort.postMessage({ cmd: 'inspect-synctex', entries }); return
+  }
+  context.onmessage({ data })
+})

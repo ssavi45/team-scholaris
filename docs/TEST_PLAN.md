@@ -1,5 +1,101 @@
 # Test plan
 
+Compilation report: verify success with/without warnings, PDF produced with errors,
+failed/cancelled/running builds, unknown issue locations and stale-source guards.
+Expand an issue, follow its source link, reveal original Technical details, switch
+to Full log and open Build details. Check keyboard disclosure operation, narrow
+panes and both themes. `test-compile-diagnostics.mjs` also checks readable message
+classification without mutating original diagnostics.
+
+## PDF rendering lifecycle regression
+
+Run `node scripts/test-pdf-surface-lifecycle.mjs`: executes component effects with
+controlled render promises to cover StrictMode replay, late cancellation after a
+replacement render, bitmap disposal and shared-page ownership. This is a lifecycle
+test, not browser rasterization. Manually recompile, resize, zoom, rotate and open
+thumbnails in both themes; all pages must remain visible. Warning-only builds must
+not open the diagnostics drawer. Errors must open it; Close diagnostics and Issues
+must close/reopen it without losing the PDF or reading position.
+
+## Compilation performance regression checks
+
+Run `node scripts/test-compiler-session.mjs` with package-network permission as
+needed. It benchmarks forced-three-pass/fresh-engine versus a ready workspace and
+a one-line edit, checks engine/package reuse, deleted-input isolation, updated PDF
+text, cancellation/failure recovery and bibliography resolution. Run the existing
+real compiler and compiler-corpus scripts for nested mains, images and errors.
+`node scripts/test-compiler-package-cache.mjs` uses a deterministic storage double
+to check positive/negative persistence, expiry, origin restrictions, generated-file
+exclusion, no-storage fallback and caching the ~10 MB format. It is not browser QA.
+
+Manual: compile once, edit a line and recompile, then reload the workspace and
+recompile. Check package network requests disappear on a warm cache; inspect
+read/save, figure, engine timings and pass count in diagnostics. Test IndexedDB
+blocked/full, cancellation, changing/deleting figures, source deletion, and access
+revocation. Restart compiler and rebuild must remain available. First-ever packages
+still require network downloads; cold-browser timing remains unmeasured here.
+
+
+## Editor toolbar follow-up: manual check
+
+- File: open, reopen closed tab, show current file in sidebar.
+- Insert: bold/italic, section, bullet list, equation and figure; undo still works.
+- Tools: go to line, toggle line comments, PDF text lookup and its unavailable hint.
+- Settings: text size, wrap, indentation and expandable keyboard shortcuts.
+- Menus close with Escape/outside click/Tab departure; Escape returns to the trigger.
+- Ctrl/Cmd+F opens compact search above the editor. Checkboxes stay small and inline;
+  Next/Previous, Select all matches, replacement and closing retain normal behavior.
+- Check light/dark and narrow panes: menus stay within the editor, search is bounded,
+  and the extra file-action toolbar row is absent.
+
+
+## PAPER-09 acceptance and evidence
+
+Automated: `node scripts/test-paper-pdf-tools.mjs` checks page/fit geometry, page-8
+relative anchors, shrink-to-3 behavior, zoom anchoring, a 1,000-page canvas-window
+bound, literal occurrence offsets, cancellation and safe-link protocols.
+`node scripts/probe-paper-synctex.mjs` runs the real vendored engine on a 12-page
+nested-main/include/BibTeX fixture, reports actual SyncTeX capability and verifies
+PDF.js text search, bookmarks/destinations and external annotation URLs. This uses
+the compiler package server/cache and may require network permission.
+
+Manual (pending; no browser connected during implementation):
+- Scroll through a 12+ page paper with wheel, touch and keyboard; no page switching.
+- Read halfway down page 8, recompile, then shorten to 3 pages; retain/clamp position.
+- Repeat zoom, fit, rotation, resize and focus; text-selection alignment stays accurate.
+- Select/copy a phrase, navigate multiple search matches, follow a citation/external link.
+- Inspect bookmarks and earlier/later thumbnails; direct page entry uses Enter.
+- Use source/PDF text lookup; edit source and confirm stale lookup is disabled.
+- In a long paper, verify at most 12 main canvases plus five thumbnail canvases;
+  scroll away and confirm old bitmap memory is released (worker memory is separate).
+- Check 375/768/1440px, both themes, keyboard focus and accessible text alternative.
+
+Exact SyncTeX mapping and a separate preview window are not delivered features.
+
+
+## PAPER-08 acceptance
+
+Automated: `node scripts/test-paper-editor.mjs` checks cyclic included outlines,
+comments/verbatim exclusions, literal/case/Unicode search offsets and caps,
+nonmutating replacement and limits, approximate counts, corrupt/user-scoped
+preferences, snippet selection/undo and read-only behavior. Also run draft/export
+regressions and local rollback-only history safeguards; lint/build/diff checks.
+
+Manual acceptance (pending):
+- At 375/768/1440px in both themes, navigate Files/Outline/Search without clipping.
+- Ctrl/Cmd+P, arrows, Enter: open a chapter; Ctrl/Cmd+G: jump to a line.
+- Close/reopen tabs, change theme and revisit files: cursor, scroll and undo survive.
+- Search unsaved drafts; select results and confirm exact text is highlighted.
+- Preview replacement across two saved files, inspect changes, apply and recompile.
+- Modify source in another session after preview: apply must reject the stale revision.
+- Dirty/conflicted/offline/viewer/archived state must not allow replacement apply.
+- Try snippets, completion, comment, undo, local replace and Ctrl/Cmd+Enter compile.
+- Reload preferences; check user isolation and small-screen default single-pane layout.
+
+No browser was available during implementation. Static and helper checks do not
+replace these UI acceptance scenarios.
+
+
 ## PAPER-06 / PAPER-07 checks
 
 Bibliography regression: a paper with no bibliography and an inline
