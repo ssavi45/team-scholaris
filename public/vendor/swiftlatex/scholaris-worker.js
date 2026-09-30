@@ -88,6 +88,25 @@ self.texlive_endpoint = `${packageOrigin}/`;
 // with no bibliography or an inline thebibliography. Inspect generated aux files
 // (including include-chapter aux files) rather than guessing from source text.
 const originalBibtex = self._compileBibtex;
+let bibtexMemo = null, bibtexRuns = 0;
+// Memoize only within one clean build. BibTeX reads citation/database/style
+// directives from aux, plus bib/bst contents; labels/page numbers are irrelevant.
+function bibliographyInputs() {
+  const files = []; let bytes = 0;
+  function visit(path) {
+    for (const name of self.FS.readdir(path).filter(name => name !== '.' && name !== '..').sort()) {
+      const full = `${path}/${name}`, stat = self.FS.stat(full);
+      if (self.FS.isDir(stat.mode)) visit(full);
+      else if (/\.(aux|bib|bst)$/.test(name)) {
+        bytes += stat.size;
+        if (bytes > 4 * 1024 * 1024) throw new Error('Bibliography inputs too large.');
+        const text = self.FS.readFile(full, { encoding: 'utf8' });
+        files.push([full, name.endsWith('.aux') ? [...text.matchAll(/\\(?:citation|bibdata|bibstyle|@input)\s*\{[^}]*\}/g)].map(match => match[0]) : text]);
+      }
+    }
+  }
+  try { visit('/work'); return JSON.stringify([self.mainfile, files]); } catch { return null; }
+}
 function bibliographyRequested() {
   const visited = new Set();
   function inspect(path) {
@@ -105,8 +124,29 @@ function bibliographyRequested() {
 }
 function conditionalBibtex(...args) {
   if (!bibliographyRequested()) return 0;
+  const key = bibliographyInputs(), output = `/work/${self.mainfile.replace(/\.tex$/, '.bbl')}`;
+  if (key !== null && bibtexMemo?.key === key) {
+    try {
+      if (self.FS.readFile(output, { encoding: 'utf8' }) === bibtexMemo.output) {
+        self.memlog += bibtexMemo.log;
+        return 0;
+      }
+    } catch { /* A missing/changed bbl must be regenerated. */ }
+  }
+  bibtexMemo = null;
+  const logBefore = self.memlog;
   // Emscripten's lazy export replaces the global on its first invocation.
-  try { return originalBibtex(...args); }
+  try {
+    bibtexRuns++;
+    const result = originalBibtex(...args);
+    if (result === 0 && key !== null && self.memlog.startsWith(logBefore)) {
+      try {
+        const text = self.FS.readFile(output, { encoding: 'utf8' });
+        if (text.length <= 4 * 1024 * 1024) bibtexMemo = { key, output: text, log: self.memlog.slice(logBefore.length) };
+      } catch { /* Preserve normal retry/error behavior. */ }
+    }
+    return result;
+  }
   finally { self._compileBibtex = conditionalBibtex; }
 }
 self._compileBibtex = conditionalBibtex;
@@ -134,6 +174,7 @@ const post = self.postMessage.bind(self), receive = self.onmessage;
 let beforePass = null;
 self.postMessage = (data, ...rest) => {
   if (data.cmd === 'compile' && data.result === 'ok') {
+    data.bibtexRuns = bibtexRuns;
     const after = referenceState();
     data.needsRerun = beforePass === null || after === null || beforePass !== after || /Rerun to get|Label\(s\) may have changed|Please rerun|rerun LaTeX/i.test(data.log || '');
   }
@@ -153,6 +194,7 @@ self.onmessage = event => {
       remove('/work');
       if (self.FS.readdir('/work').some(name => name !== '.' && name !== '..')) throw new Error('Workspace reset incomplete.');
       beforePass = null;
+      bibtexMemo = null; bibtexRuns = 0;
       post({ cmd: 'reset-workspace', result: 'ok' });
     } catch { post({ cmd: 'reset-workspace', result: 'failed' }); }
     return;

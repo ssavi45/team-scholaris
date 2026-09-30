@@ -1,5 +1,34 @@
 # Design system
 
+## Equation composer
+
+Insert > Insert equation opens a native modal with four labelled layout choices,
+optional building blocks, a free-form LaTeX input and live preview. Numbered modes
+expose optional labels; aligned mode explains & and row separators. Header/footer
+stay visible while the body scrolls. Controls use theme tokens and small native
+radio/checkbox inputs. Preview errors retain the user's text and offer an explicit
+insert-source-anyway choice. Final numbering is determined by paper compilation.
+
+
+## PAPER-11 asset workflows
+
+Explorer keeps full-path search and collapsible folders; F2 opens file actions.
+Rename/move has a preview with source paths, optional automatic repair and manual
+warnings. Imports use explicit per-collision choices, never a global overwrite
+checkbox. Templates enter the same review. Figure insertion has a labelled image
+selector, preview, caption and unique label, with errors retained in the dialog.
+
+
+## Reference assistance
+
+Use Insert → Citation / Cross-reference and Tools → Manage references & check keys.
+Pickers show title, author/year, literal key and source location with an explicit
+Insert action. Disable ambiguous duplicate keys. The manager has labelled add/
+import/edit/rename actions, a reviewed change preview and a direct Open source
+path. Explain scan limitations and disabled actions; never imply TeX evaluation or
+guaranteed bibliography inclusion. Match both themes, keep modal focus contained,
+and allow Escape dismissal when no save is running.
+
 PDF toolbar: chevron previous/next buttons surround a centered current/total page
 box with spinner-free page entry. Show zoom once in the zoom selector, including
 actual percentage for fit modes. Separate navigation, zoom and view tools with

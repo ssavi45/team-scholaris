@@ -1,5 +1,68 @@
 # Test plan
 
+## Recompile latency regression
+
+Run test-compiler-session.mjs and test-compiler-package-cache.mjs. Verify warm engine
+reuse, current PDF text, removed sources, failure/cancel disposal, one bibliography
+build across repeated LaTeX passes, changed bib data, and missing-key diagnostics.
+Manually compare build details after a one-line edit/equation: Read/save versus
+engine time. Test revoked membership while parallel reads are in flight. Browser
+network/font-loading measurements remain separate from Node compiler timings.
+
+
+## Equation composer acceptance
+
+Run `node scripts/test-paper-equations.mjs --compile` for delimiter recognition,
+all template previews, labels, amsmath setup, one-step insertion undo, stale/read-only
+guards and actual LaTeX compilation. Run editor/draft regressions and lint/build.
+Manual: insert each layout, edit a selected existing equation, insert templates at
+the textarea cursor and replace placeholders, try invalid/custom commands and the
+explicit source-anyway option. Verify amsmath setup in current/separate main files,
+autosave, undo, duplicate labels, Escape/focus, both themes and narrow screens.
+No connected browser was available for visual verification during implementation.
+
+
+## PAPER-11 acceptance
+
+Run `node scripts/test-paper-assets.mjs --compile`: move preservation, import
+conflict choices, caption escaping, dimensions, starter manifests, real article/
+report/thesis compilation, renamed included chapter and ZIP export/reimport.
+Run editor/draft/reference regressions, lint, build and whitespace checks.
+
+Manual: F2 and tree actions; rename a chapter/figure/bibliography and review all
+changed paths; opt out of automatic repair. Test dynamic paths, collisions and
+nested main files. Import ZIPs with each conflict choice and incompatible assets.
+Apply each starter to existing source only after reviewing replacements. Insert a
+figure at selection, undo, recompile and export/reimport. Test malformed images,
+MIME/signature mismatch, oversized dimensions, quota rejection and failed saves.
+Verify History restores the pre-import tree/figures. Verify stale revisions,
+viewer/revoked/offline/dirty states, Escape/focus and both themes at narrow widths.
+Browser/live-backend acceptance is separate from helper/compiler checks.
+
+
+## PAPER-10 acceptance
+
+Run `node scripts/test-paper-references.mjs --compile`. Covers nested/quoted/braced
+values, unknown fields/strings, malformed entries, trailing comments, duplicate
+choices (including prototype-like keys), missing/duplicate label/citation checks,
+supported rename edits, unsupported-key warnings, completion, insertion/undo and
+read-only behavior. Real WASM compilation repairs greenwade93 through the import
+planner and verifies its author/year in PDF text. Also run paper-editor and
+paper-drafts regressions, lint/build and diff checks.
+
+Manual: Insert → Citation → search by author/title and insert at a selected cursor
+range; undo and try key completion inside cite/ref commands. Test labels, missing
+keys and duplicate-key disabling. Tools → Manage references: add an entry, edit a
+common field while retaining a custom field, upload/paste nested BibTeX, exercise
+keep/replace/rename and inspect previews. Rename a used key across multiple files;
+review custom-macro/dependency warnings. Compile greenwade93 and inspect the PDF.
+
+Verify saved results survive reload, history captures the edit, another session's
+revision change rejects apply, read-only/revoked access cannot mutate, and unsaved
+drafts block apply. Test import errors, failed saves, offline state, Escape/focus,
+375/768/1440 widths and both themes. Browser/backend acceptance is not implied by
+helper/compiler test results. DOI lookup is not enabled.
+
 Compilation report: verify success with/without warnings, PDF produced with errors,
 failed/cancelled/running builds, unknown issue locations and stale-source guards.
 Expand an issue, follow its source link, reveal original Technical details, switch

@@ -1,5 +1,5 @@
 import { inflateSync } from 'fflate'
-import { imageExtension, imageType, textExtension, validPath, validateTree, type TreeEntry } from './file-tree'
+import { imageExtension, imageType, imageDimensions, textExtension, validPath, validateTree, type TreeEntry } from './file-tree'
 export type ZipImport = { entries: TreeEntry[]; skipped: string[] }
 const crcTable = Uint32Array.from({ length: 256 }, (_, index) => {
   let value = index
@@ -46,7 +46,7 @@ export function readSourceZip(bytes: Uint8Array<ArrayBuffer>): ZipImport {
     const data = method === 0 ? input.slice() : inflateSync(input, { out: new Uint8Array(size) })
     if (data.length !== size || crc32(data) !== expectedCrc) throw new Error(`Corrupt ZIP entry: ${path}`)
     if (imageExtension.test(path)) {
-      imageType(path, data); entries.push({ path, kind: 'image', content: '', bytes: Uint8Array.from(data), size_bytes: size })
+      imageType(path, data); imageDimensions(path, data); entries.push({ path, kind: 'image', content: '', bytes: Uint8Array.from(data), size_bytes: size })
     } else {
       const content = decoder.decode(data)
       if (content.includes('\0')) throw new Error(`Source must be UTF-8 text: ${path}`)

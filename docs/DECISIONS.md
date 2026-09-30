@@ -1,5 +1,41 @@
 # Architecture and product decisions
 
+## Reduce recompile waits without weakening snapshot checks
+
+Overlap independent authorization metadata and coherent source reads; retain the
+before/files/after revision bracket and save-before-compile contract. Deduplicate
+only unchanged BibTeX work within a build, preserving logs and required LaTeX passes.
+Do not trade stale citations or cached private output for faster timings.
+
+
+## Equation preview renderer
+
+Choose lazy-loaded KaTeX 0.18.9 for the bounded, local equation composer. MathJax
+was considered for broader TeX extension support; this slice needs a focused math
+preview rather than a second document engine. Unsupported/custom macros retain
+an explicit source-insertion path and use the existing compiler for final output.
+KaTeX preview numbering is not presented as final manuscript numbering. Renderer
+options follow https://katex.org/docs/options; compatibility follows
+https://katex.org/docs/supported. No runtime CDN or external equation lookup.
+
+
+## PAPER-11: reuse manifest transactions and explicit import review
+
+Retain the existing atomic revision/history write contract; no parallel asset
+mutation API or schema. Literal path repairs use the compiler's project-root
+working directory and flag unsupported TeX constructs. Starter templates merge
+through reviewed imports, retaining unrelated files. General Files copying stays
+optional/deferred; no implicit links to mutable project uploads.
+
+
+## PAPER-10: preserve source and reuse atomic manifests
+
+Reference forms patch source spans rather than normalizing BibTeX, preserving
+unfamiliar fields and formatting. Multi-file renames/imports use the established
+revision-checked manifest RPC/history instead of a separate citation database or
+partial saves. Support literal commands and flag custom macros/dependencies.
+DOI lookup remains deferred until its provider/provenance slice is enabled.
+
 ## Reuse engine/packages, reset document state
 
 Supersedes the earlier fresh-worker-per-click choice for the interactive workspace.

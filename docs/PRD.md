@@ -1,5 +1,32 @@
 # Product Requirements Document
 
+## Flexible equation composition
+
+Insert equation supports free-form LaTeX, inline/display/numbered/aligned layouts,
+optional labels, editable building blocks and a local live preview. Source stays
+editable. Custom macros may require full compilation. No handwriting/image OCR
+or full visual math editor in this increment.
+
+
+## Assets and starters (PAPER-11)
+
+Authors can preview file moves and repair supported LaTeX references, import files
+with explicit conflict choices, insert an uploaded figure with caption/label, and
+start from an original article, report or multi-file thesis skeleton. Existing
+papers are never silently replaced. General Files copying and unsupported figure
+conversion are deferred optional slices.
+
+
+## References without guesswork (PAPER-10)
+
+Search local BibTeX by author/title/year/key, insert citations or label references
+at the cursor, and complete known keys. The manager reports missing/duplicate
+literal keys with locations, imports with explicit duplicate choices, edits common
+fields, and previews citation updates before key renames. Raw BibTeX remains
+editable and untouched outside explicit changes. Advanced macros/styles require
+source editing; compilation is authoritative. DOI lookup is a separately enabled
+future slice; external library sync remains out of scope.
+
 ## Continuous manuscript reading (PAPER-09)
 
 Readers scroll naturally through all pages, preserve their reading position across

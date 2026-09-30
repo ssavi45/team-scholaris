@@ -1,5 +1,36 @@
 # Security requirements
 
+## Equation preview
+
+KaTeX runs locally with trust:false, strict:error, fresh macros, maxExpand:500 and
+maxSize:20. Preview/input is bounded to 10,000 characters. Manuscript expressions
+are not sent to a remote renderer. Error messages render as React text. Source
+insertion respects read-only and rejects changed target documents; literal labels
+are checked against current drafts excluding the replaced selection. Full LaTeX
+compilation remains authoritative for unsupported commands and package behavior.
+
+
+## PAPER-11 file changes
+
+Never interpolate arbitrary caption text into TeX: escape reserved characters and
+validate labels/paths. Uploaded PNG/JPEG bytes must match their extensions; supplied
+MIME types must be compatible. Bound dimensions to 16,000 per side/40 megapixels
+before new figure upload. These browser checks supplement existing server quotas,
+authorization and private Storage policies; they are not trusted image decoding.
+Import choice lookup rejects inherited properties and requires collision decisions.
+Preserve existing draft guards and expected-revision atomic history writes.
+
+
+## Reference editing
+
+Parse bibliographies locally as text, never executable HTML. No external lookup
+transmits manuscript data. Restrict picker keys/commands and respect read-only.
+Imports enforce UTF-8/size bounds and explicit duplicate choices; inherited object
+properties cannot select a replacement. Apply requires saved conflict-free state
+and uses the existing authorized, revision-checked atomic manifest RPC. UI gates
+are supplementary. Preserve private assets, RLS, quotas and history; no new bucket,
+credential or privilege is introduced.
+
 ## Compiler cache boundaries
 
 Persistent compiler storage contains allowlisted public package responses only.

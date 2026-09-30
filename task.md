@@ -1,10 +1,62 @@
 # Paper workspace roadmap and build tracker
 
-Last updated: 2026-09-29. **PAPER-09 continuous reader implemented locally; manual visual acceptance pending.**
+Last updated: 2026-09-30. **Equation composer and PAPER-11 implemented; manual acceptance pending.**
 This is the only task tracker. Current product focus: make Paper the reason a
 research team chooses Scholaris. Previous delivery records remain below.
 
-## Current handoff: PAPER-09
+## Recompile latency follow-up
+
+- [x] Guard figure insertion against changed source and revoked edit permission;
+  restore focus and place the cursor after insertion. Add focused regressions.
+- [ ] Manually verify figure dialog cancellation and permission changes.
+
+- [x] Add Undo / Redo beside File using existing editor history and read-only guards.
+- [ ] Manually check Undo / Redo availability when switching document tabs.
+- [x] Polish editor menu focus/dismissal, shortcut help, action wording and disabled styling.
+- [ ] Check toolbar menus using keyboard and at narrow pane widths.
+
+- [x] Overlap independent access/source reads while retaining save/revision checks.
+- [x] Skip duplicate successful BibTeX work within each build; preserve warnings.
+- [x] Real compiler session/cache/draft regressions; report bibliography build count.
+- [ ] Browser timing comparison and revoked-access acceptance.
+
+## Current handoff: Equation composer (approved follow-up)
+
+- [x] Free-form equation entry and inline/display/numbered/aligned layouts.
+- [x] Optional building blocks, symbols and editable placeholders.
+- [x] Lazy local KaTeX preview, clear errors and custom-command fallback.
+- [x] Selection prefill, source inspection, unique labels and undoable insertion.
+- [x] Explicit amsmath setup through normal draft/editor saves.
+- [x] Preview/helper checks, real LaTeX compilation, editor/draft regressions, lint and build.
+- [ ] Browser/theme/keyboard and persistence acceptance (no browser connection).
+
+
+## Previous handoff: PAPER-11
+
+- [x] Preview rename/move and update supported literal LaTeX paths atomically.
+- [x] Per-path keep/replace/rename import choices, main-file detection and compatibility warnings.
+- [x] Figure dimensions/MIME/signature checks and cursor insertion with caption/label.
+- [x] Article/report/thesis starters through explicit import review.
+- [x] Helper checks, real starter compilation and renamed-chapter export/reimport coverage.
+- [ ] Manual dialog, keyboard, theme, saved-state, concurrency and history-restore acceptance.
+- [ ] Optional General Files asset-copy slice (deferred).
+
+PAPER-12 remains unstarted.
+
+## Previous handoff: PAPER-10
+
+- [x] Local BibTeX index, searchable citation/label pickers and key completion.
+- [x] Missing/duplicate key locations and guarded source navigation.
+- [x] Import preview with keep/replace/rename duplicate choices; common-entry forms.
+- [x] Reviewed multi-file citation-key rename with unsupported-macro warnings.
+- [x] Raw-source preservation, revision-safe atomic saves and existing history.
+- [x] Parser/planner/CodeMirror checks; real greenwade93 repair and PDF extraction.
+- [ ] Manual browser and persisted-edit/permission acceptance (see TEST_PLAN).
+- [ ] Separately enabled DOI provider slice; no external lookup in this build.
+
+PAPER-11 implemented on user request; PAPER-10 manual acceptance remains pending.
+
+## Previous handoff: PAPER-09
 
 - [x] PDF toolbar: grouped chevrons/page box, no numeric spinners, single zoom
   display and clearly separated view actions. Manual visual acceptance pending.
@@ -41,7 +93,7 @@ research team chooses Scholaris. Previous delivery records remain below.
 - [ ] Manual scrolling, selection, keyboard, light/dark and 375/768/1440px acceptance.
 
 Exact mapping and a separate preview window remain gated. Next increment is PAPER-10
-following acceptance; PAPER-10 was not started.
+following acceptance at that handoff; PAPER-10 is now implemented below.
 
 ## Previous handoff: PAPER-08
 
@@ -342,15 +394,15 @@ for the mounted workspace session. No separate window or compiler change shipped
 
 **User story:** "Find a citation by author/title and insert a key that really exists."
 
-- [ ] Index existing .bib entries locally; show author/title/year/key and source file.
+- [x] Index existing .bib entries locally; show author/title/year/key and source file.
   Preserve raw BibTeX, including unfamiliar fields, strings and nested braces.
-- [ ] Provide citation and label pickers at the source cursor; add completion for
+- [x] Provide citation and label pickers at the source cursor; add completion for
   known citation/reference keys. Show missing and duplicate keys with locations.
-- [ ] Import BibTeX with preview and duplicate-resolution choices. Rename a key only
+- [x] Import BibTeX with preview and duplicate-resolution choices. Rename a key only
   after showing affected supported citation commands; flag unsupported macros.
-- [ ] Add common-entry editing and simple insertion help without making the visual
+- [x] Add common-entry editing and simple insertion help without making the visual
   form the only way to edit a bibliography. Leave advanced styles in source.
-- [ ] Treat DOI lookup as a separately enabled slice: verify a provider, display
+- [ ] Deferred separate slice — DOI lookup: verify a provider, display
   source/provenance, handle failure/rate limits, and let users review metadata.
   No fabricated references or silent overwrites; manual entry always works.
 
@@ -362,24 +414,26 @@ DOI lookup must not transmit private manuscript text; Zotero/Mendeley sync is de
 
 **User story:** "Add a figure or chapter without breaking the document."
 
-- [ ] Bring common create/rename/move actions closer to the existing tree. Add
+- [x] Bring common create/rename/move actions closer to the existing tree. Add
   searchable paths, collapsible folders and keyboard equivalents for pointer actions.
-- [ ] Preview known input/include/graphics/bibliography references before a rename;
+- [x] Preview known input/include/graphics/bibliography references before a rename;
   offer a version-safe multi-file update for supported literal paths only. Flag
   dynamic/macros for manual repair and preserve every draft.
-- [ ] Upload/preview figures and insert a figure snippet with caption/label/path.
+- [x] Upload/preview figures and insert a figure snippet with caption/label/path.
   Keep limits visible; validate collision, MIME/signature and dimensions.
 - [ ] Optionally copy an authorized General Files asset into Paper as an explicit
   snapshot with separate quota accounting; never silently link mutable uploads.
-- [ ] Improve existing ZIP review with conflict choices, entry-point detection and
+- [x] Improve existing ZIP review with conflict choices, entry-point detection and
   compatibility warnings. Imports must be recoverable using 06 checkpoints.
-- [ ] Offer a small tested starter set: blank article, research report and multi-file
+- [x] Offer a small tested starter set: blank article, research report and multi-file
   thesis skeleton. Include working example bibliography/figure; no unlicensed
   publisher templates or overwrite of an existing paper without confirmation.
 
 **Acceptance:** Import a supported project, rename an included chapter, insert a
 figure, undo via restore and export/reimport. Warn about unsupported formats/engines.
 PDF/SVG/EPS figure support needs an explicit conversion/compiler compatibility slice.
+
+Implementation: F2 opens selected-file actions; existing searchable/collapsible tree retained. Rename preview updates literal root-relative paths with opt-out and manual-repair warnings. Import conflicts are reviewed individually. Insert ? Insert uploaded figure adds a caption/label snippet in one undoable editor transaction. Three original starters use the same import review. Optional General Files copying is deferred. No dependencies or migrations added. Manual UI, permission/concurrency, history restore acceptance remains pending.
 
 ## PAPER-12 ? Coediting architecture proof (decision gate)
 

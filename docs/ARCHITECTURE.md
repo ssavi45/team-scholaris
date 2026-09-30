@@ -1,5 +1,52 @@
 # Architecture
 
+## Recompile preparation and BibTeX deduplication
+
+After saving drafts, fresh access metadata and the revision-bracketed manifest read
+run concurrently and both settle. Access failure has priority before using source.
+BibTeX memoization is scoped to one clean build: main entry, all local aux citation/
+database/style/input directives, bib/bst contents and unchanged bbl must match.
+Bounded inputs/output (4 MiB) and successful completion are required. Warnings are
+replayed; failed/unreadable states run normally. No cross-job generated-file cache.
+
+
+## Equation composer
+
+SourceEditor lazy-loads EquationDialog and KaTeX only when opened. A 200ms preview
+uses local bundled fonts and HTML+MathML. equations.ts handles delimiters, source
+wrapping, label checks, package setup and isolated CodeMirror insertion. Captured
+source/range rejects stale edits. Explicit amsmath setup uses a separate editor
+transaction for the active main file or the existing draft store for another main
+file; both retain normal autosave/version protection. No backend/schema changes.
+
+
+## PAPER-11 asset organization
+
+asset-tools plans source-preserving literal path edits and import conflict choices.
+All compiler paths are project-root relative. FileManager stages reviewed entries
+and commits through existing applyPaperTree revision/history authorization.
+FigurePicker inserts an undoable source snippet; private FigurePreview hydration
+is reused. Starter manifests are original local source, with no remote templates.
+
+
+## PAPER-10 reference assistance
+
+references.ts provides an offset-preserving BibTeX reader and literal TeX key
+scanner over authorized current drafts. Field/key edits patch known spans; imports
+retain raw entries/declarations. No BibTeX-to-JSON reserialization. Strings, macros,
+conditionals and active bibliography reachability are not evaluated.
+
+ReferencePicker and completion integrate with SourceEditor; insertion is one
+isolated CodeMirror undo transaction. ReferenceManager loads a revision-bracketed
+saved manifest, stages changes/diffs, and uses applyPaperTree/apply_paper_manifest.
+Existing permissions, quotas, revision protection and history apply; refreshing
+reconciles the established draft store. No schema or dependency changes.
+
+Import limits: 512 KiB and 100 previewed entries. Lists/pickers show 150 results
+with search narrowing. Conflicting @string declarations require source repair.
+Rename warnings include unhandled key occurrences and BibTeX dependency fields.
+No DOI provider is contacted.
+
 ## Compilation performance follow-up
 
 Each mounted user/project workspace owns a CompilerSession. Engine warm-up starts

@@ -1,7 +1,7 @@
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database'
 import type { SourceFile } from './compiler'
-import { imageType, validateTree, type TreeEntry } from './file-tree'
+import { imageType, imageDimensions, validateTree, type TreeEntry } from './file-tree'
 
 export type PaperFile = Omit<Database['public']['Tables']['paper_files']['Row'], 'kind'> & { kind: 'text' | 'folder' | 'image' }
 function client() {
@@ -83,6 +83,7 @@ export async function applyPaperTree(projectId: string, revision: number, entrie
       let storagePath = entry.storage_path ?? null
       if (entry.kind === 'image' && entry.bytes) {
         const mime = imageType(entry.path, entry.bytes)
+        imageDimensions(entry.path, entry.bytes)
         storagePath = `${projectId}/${crypto.randomUUID()}.${mime === 'image/png' ? 'png' : 'jpg'}`
         const { error } = await client().storage.from('paper-figures').upload(storagePath, entry.bytes, { contentType: mime, upsert: false })
         if (error) throw new Error(`Unable to upload ${entry.path}: ${error.message}`)

@@ -1,5 +1,5 @@
 export type SourceFile = { path: string; content: string; kind?: 'text' | 'folder' | 'image'; storage_path?: string | null; bytes?: Uint8Array<ArrayBuffer> }
-export type Compilation = { pdf: Uint8Array<ArrayBuffer>; log: string; signature: string; passes?: number }
+export type Compilation = { pdf: Uint8Array<ArrayBuffer>; log: string; signature: string; passes?: number; bibtexRuns?: number }
 export class CompileError extends Error {
   log: string
   constructor(message: string, log = '') { super(message); this.name = 'CompileError'; this.log = log }
@@ -102,7 +102,7 @@ export async function compilePaper(files: SourceFile[], signal: AbortSignal, pro
         if (pass < 3 && data.needsRerun !== false) { pass++; progress(`Resolving references, pass ${pass}...`); worker.postMessage({ cmd: 'compilelatex' }); return }
         const pdf = new Uint8Array(data.pdf)
         if (pdf.length > 20 * 1024 * 1024 || new TextDecoder().decode(pdf.slice(0, 5)) !== '%PDF-') { reject(new CompileError('The compiler did not produce a supported PDF.', log)); return }
-        resolve({ pdf, log, signature: sourceSignature(files, mainFile), passes: pass })
+        resolve({ pdf, log, signature: sourceSignature(files, mainFile), passes: pass, bibtexRuns: data.bibtexRuns })
       }
     })
   } finally {

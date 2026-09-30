@@ -1,3 +1,4 @@
+import { amsmathEdit } from './equations'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useBlocker, useParams } from 'react-router'
 import { useAuth } from '../auth/auth-context'
@@ -6,6 +7,7 @@ import { hydrateFigures, initializePaper, loadPaperSettings, loadPaperState, typ
 import { SourceEditor, type EditorMemory } from './SourceEditor'
 import { EditorMenu } from './EditorMenu'
 import { CompilerMenu } from './CompilerMenu'
+import { indexReferences } from './references'
 import { usePaperDrafts } from './usePaperDrafts'
 import { readRecovery, deleteRecovery, clearProjectRecovery, type RecoveryDraft } from './draft-storage'
 import { DraftPanel } from './DraftPanel'
@@ -27,6 +29,7 @@ const FileManager = lazy(() => import('./FileManager'))
 const HistoryPanel = lazy(() => import('./HistoryPanel'))
 const ReplaceProjectDialog = lazy(() => import('./ReplaceProjectDialog'))
 const FigurePreview = lazy(() => import('./FigurePreview'))
+const ReferenceManager = lazy(() => import('./ReferenceManager'))
 
 export function PaperPage() {
   const { projectId = '' } = useParams()
@@ -128,6 +131,8 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
   const navigationFiles = useMemo(() => files.map(file => ({ ...file, content: documents[file.id]?.text ?? file.content })), [files, documents])
   const wordCount = useMemo(() => approximateWords(draft), [draft])
   const replaceBlocked = !editable || dirty || saving || busy || compiling || attention || !!recoveryError
+  const referenceIndex = useMemo(() => indexReferences(navigationFiles), [navigationFiles])
+  const [referencesOpen, setReferencesOpen] = useState(false)
   function navigateSource(location: SourceLocation, expected: string) {
     const file = navigationFiles.find(item => item.id === location.fileId)
     if (!file || file.content !== expected) { setStatus('The source changed. Select the refreshed result again.'); return }
@@ -186,9 +191,18 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
         await waitForPreparation(store.saveAll(), controller.signal)
       }
       const intended = Object.values(store.getSnapshot()).map(document => ({ id: document.base.id, text: document.text }))
-      const data = await loadProject(projectId, controller.signal)
+      // Access metadata and the revision-bracketed source read are independent.
+      // Keep both fresh, but avoid two extra sequential network round trips.
+      const [projectRead, sourceRead] = await Promise.allSettled([
+        loadProject(projectId, controller.signal),
+        loadPaperState(projectId, controller.signal),
+      ])
+      // Inspect access first even if the concurrent source read failed too.
+      if (projectRead.status === 'rejected') throw projectRead.reason
+      const data = projectRead.value
       if (!data) { compilerSession.dispose(); figureCache.clear(); throw new Error('Project unavailable. Your previous preview has been cleared.') }
-      const loaded = await loadPaperState(projectId, controller.signal)
+      if (sourceRead.status === 'rejected') throw sourceRead.reason
+      const loaded = sourceRead.value
       const snapshot = loaded.files
       if (controller.signal.aborted) return
       if (intended.some(item => snapshot.find(file => file.id === item.id)?.content !== item.text)) {
@@ -209,7 +223,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       if (controller.signal.aborted || job.current !== controller) return
       const resultIssues = parseCompileDiagnostics(result.log, sources.map(file => file.path))
       setOutput({ ...result, id: Date.now(), revision, main }); setCompileLog(result.log); setCompileStatus(resultIssues.length ? 'PDF produced with diagnostics' : 'PDF compiled successfully'); setCompileOutcome('success'); setLogOpen(resultIssues.some(issue => issue.severity === 'error'))
-      setCompileTiming(`Read/save ${(hydrationStarted - started).toFixed(0)} ms; figures ${(prepared - hydrationStarted).toFixed(0)} ms; engine ${(performance.now() - prepared).toFixed(0)} ms; ${result.passes ?? 3} LaTeX passes`)
+      setCompileTiming(`Read/save ${(hydrationStarted - started).toFixed(0)} ms; figures ${(prepared - hydrationStarted).toFixed(0)} ms; engine ${(performance.now() - prepared).toFixed(0)} ms; ${result.passes ?? 3} LaTeX passes${result.bibtexRuns === undefined ? '' : `; ${result.bibtexRuns} bibliography builds`}`)
     } catch (cause) {
       if (!controller.signal.aborted && job.current === controller) {
         const detail = message(cause)
@@ -398,7 +412,14 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
               {(!selected || selected.kind !== 'text') && <div className="paper-edit-tools editor-toolbar">{fileActions}</div>}
               {(focus ?? viewMode) === 'source' && <div className="paper-source-actions"><button className="tool-button" disabled={busy || compiling} onClick={() => { setFocus(null); setViewMode(window.matchMedia('(max-width: 900px)').matches ? 'pdf' : 'split'); void recompile() }}><Icon name="play" />Compile and show PDF</button></div>}
               {!selected && <div className="paper-editor-empty">Select a file from Explorer to continue writing. Closed tabs retain unsaved drafts.</div>}
-              {selected?.kind === 'image' ? <Suspense fallback={<p>Loading figure...</p>}><FigurePreview key={selected.storage_path} file={selected} /></Suspense> : selected && <SourceEditor fileActions={fileActions} key={selected.id} fileId={selected.id} memory={editorMemory} value={draft} onChange={setDraft} readOnly={!editable || busy || activeDocument?.remote === null} onSave={save} jump={editorJump} preferences={textPreferences} setPreferences={updatePreferences} quickSwitch={() => setQuickSwitch(true)} reopen={reopenTab} compile={() => void recompile()} canFindPdf={!!output && !stale} findPdf={text => { if (!text || !output || stale) return; setPdfSearchRequest(previous => ({ text, token: (previous?.token ?? 0) + 1 })); setFocus(null); setViewMode(window.matchMedia('(max-width: 900px)').matches ? 'pdf' : 'split') }} />}
+              {selected?.kind === 'image' ? <Suspense fallback={<p>Loading figure...</p>}><FigurePreview key={selected.storage_path} file={selected} /></Suspense> : selected && <SourceEditor mainFile={mainFile} setupMath={() => {
+                if (!editable || busy || recovery.length) throw new Error('Resolve draft or access issues before changing the preamble.')
+                const main = files.find(file => file.path === mainFile)
+                const current = main && store.getSnapshot()[main.id]
+                if (!main || !current || current.remote !== undefined || current.error) throw new Error('The main file is unavailable or needs draft review.')
+                const edit = amsmathEdit(current.text)
+                if (edit) store.edit(main.id, current.text.slice(0,edit.from) + edit.insert + current.text.slice(edit.to))
+              }} paperFiles={navigationFiles} referenceIndex={referenceIndex} manageReferences={() => setReferencesOpen(true)} fileActions={fileActions} key={selected.id} fileId={selected.id} memory={editorMemory} value={draft} onChange={setDraft} readOnly={!editable || busy || activeDocument?.remote === null} onSave={save} jump={editorJump} preferences={textPreferences} setPreferences={updatePreferences} quickSwitch={() => setQuickSwitch(true)} reopen={reopenTab} compile={() => void recompile()} canFindPdf={!!output && !stale} findPdf={text => { if (!text || !output || stale) return; setPdfSearchRequest(previous => ({ text, token: (previous?.token ?? 0) + 1 })); setFocus(null); setViewMode(window.matchMedia('(max-width: 900px)').matches ? 'pdf' : 'split') }} />}
               <div className="editor-footer"><span>{draft.split('\n').length} lines · UTF-8</span>{selected?.kind === 'text' && <span title="Approximate count for this file; excludes common math, commands and comments. Not a publisher word count.">~{wordCount} words (this file)</span>}<span>Ctrl/Cmd + S to save</span></div>
             </section>
             <div className="panel-resizer" role="separator" tabIndex={0} aria-label="Resize source and preview" aria-orientation="vertical" aria-valuemin={25} aria-valuemax={75} aria-valuenow={split}
@@ -435,6 +456,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       setSelected(loaded.files.find(file => file.id === selected?.id) ?? loaded.files.find(file => file.path === loaded.settings?.main_file) ?? null)
       setOpened([]); setStatus('Historical version restored. Recompile to update the PDF.')
     }} /></Suspense>}
+    {referencesOpen && <Suspense fallback={<p role="status">Opening references…</p>}><ReferenceManager projectId={projectId} files={navigationFiles} blocked={replaceBlocked || !online} close={() => setReferencesOpen(false)} navigate={navigateSource} onBusy={value => { inFlight.current = value; setBusy(value) }} applied={async () => { const loaded = await loadPaperState(projectId); setFiles(loaded.files); setSettings(loaded.settings); setStatus('References updated. Recompile to update citations in the PDF.') }} /></Suspense>}
     {manager && settings && <Suspense fallback={<p role="status" className="export-loading">Opening file manager...</p>}><FileManager initialPath={managerRequest.path} initialKind={managerRequest.kind} projectId={projectId} files={files} settings={settings} close={() => setManager(false)} onBusy={(value) => { inFlight.current = value; setBusy(value) }} applied={(warning) => { setError(warning ?? ''); setManager(false); setLoading(true); setAttempt((value) => value + 1) }} /></Suspense>}
   </div>
 }

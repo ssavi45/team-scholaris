@@ -1,11 +1,21 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
+import { amsmathEdit, hasAmsmath, insertEquation, equationSource, checkEquationLabels } from './equations'
+const EquationDialog = lazy(() => import('./EquationDialog'))
+import { FigurePicker } from './FigurePicker'
+import { insertFigure } from './asset-tools'
+import type { PaperFile } from './paper-api'
+import { isolateHistory, undo, redo, undoDepth, redoDepth } from '@codemirror/commands'
+import { Transaction } from '@codemirror/state'
 import { basicSetup } from 'codemirror'
 import { Compartment, EditorState, StateEffect, Prec } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { HighlightStyle, StreamLanguage, syntaxHighlighting, indentUnit } from '@codemirror/language'
 import { openSearchPanel, gotoLine, search } from '@codemirror/search'
-import { Search, Plus, Settings2, Wrench, Bold, Italic } from 'lucide-react'
+import { Search, Plus, Settings2, Wrench, Bold, Italic, Undo2, Redo2 } from 'lucide-react'
 import { EditorMenu } from './EditorMenu'
+import { ReferencePicker } from './ReferencePicker'
+import { referenceCompletions, insertReference } from './reference-completion'
+import type { ReferenceIndex } from './references'
 import { toggleComment } from '@codemirror/commands'
 import { snippets, insertSnippet, latexCompletions } from './editor-snippets'
 import type { EditorPreferences } from './editor-preferences'
@@ -77,13 +87,14 @@ function themeExtensions(isDark: boolean) {
 
 export type EditorMemory = Map<string, { state: EditorState; top: number; left: number }>
 
-export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory, jump, preferences, setPreferences, quickSwitch, reopen, compile, findPdf, canFindPdf, fileActions }: {
+export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory, jump, preferences, setPreferences, quickSwitch, reopen, compile, findPdf, canFindPdf, fileActions, referenceIndex, manageReferences, paperFiles, mainFile, setupMath }: {
   value: string; readOnly: boolean; onChange: (value: string) => void; onSave: () => void
   fileId: string; memory: EditorMemory
   jump?: { fileId: string; line: number; token: number; from?: number; to?: number } | null
   preferences: EditorPreferences; setPreferences: (patch: Partial<EditorPreferences>) => void
   quickSwitch: () => void; reopen: () => void; compile: () => void
   findPdf: (text: string) => void; canFindPdf: boolean; fileActions: ReactNode
+  referenceIndex: ReferenceIndex; manageReferences: () => void; paperFiles: PaperFile[]; mainFile: string; setupMath: () => void
 }) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | null>(null)
@@ -91,6 +102,15 @@ export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory
   const themeCompartment = useRef(new Compartment())
   const preferencesCompartment = useRef(new Compartment())
   const currentTheme = useTheme()
+  const references = useRef(referenceIndex)
+  const [equationTarget, setEquationTarget] = useState<{ doc: string; from: number; to: number } | null>(null)
+  const [figurePicker, setFigurePicker] = useState<{ doc: string; from: number; to: number } | null>(null)
+  const [picker, setPicker] = useState<'citation' | 'label' | null>(null)
+  const [historyAvailable, setHistoryAvailable] = useState(() => {
+    const state = memory.get(fileId)?.state
+    return { undo: !!state && undoDepth(state) > 0, redo: !!state && redoDepth(state) > 0 }
+  })
+  useEffect(() => { references.current = referenceIndex }, [referenceIndex])
   const callbacks = useRef({ onChange, onSave, quickSwitch, reopen, compile })
   useEffect(() => { callbacks.current = { onChange, onSave, quickSwitch, reopen, compile } }, [onChange, onSave, quickSwitch, reopen, compile])
 
@@ -108,7 +128,7 @@ export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory
         themeCompartment.current.of(themeExtensions(initialTheme.current === 'dark')),
         access.current.of(EditorState.readOnly.of(initialReadOnly.current)),
         preferencesCompartment.current.of(preferenceExtensions(initialPreferences.current)),
-        EditorState.languageData.of(() => [{ autocomplete: latexCompletions, commentTokens: { line: '%' } }]),
+        EditorState.languageData.of(() => [{ autocomplete: latexCompletions, commentTokens: { line: '%' } }, { autocomplete: (context: Parameters<typeof referenceCompletions>[0]) => referenceCompletions(context, references.current) }]),
         EditorView.contentAttributes.of({ 'aria-label': 'LaTeX source editor' }),
         Prec.high(keymap.of([
           { key: 'Mod-s', run: () => { callbacks.current.onSave(); return true } },
@@ -121,6 +141,9 @@ export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory
         ])),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) callbacks.current.onChange(update.state.doc.toString())
+          const canUndo = undoDepth(update.state) > 0, canRedo = redoDepth(update.state) > 0
+          setHistoryAvailable(previous => previous.undo === canUndo && previous.redo === canRedo
+            ? previous : { undo: canUndo, redo: canRedo })
         }),
       ]
     const cached = memory.get(fileId)
@@ -166,13 +189,21 @@ export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory
 
   return <><div className="paper-edit-tools editor-toolbar" aria-label="Writing tools">
     {fileActions}
+    <div className="editor-history-actions" role="group" aria-label="Edit history">
+      <button type="button" className="tool-button" aria-label="Undo" title="Undo (Ctrl/Cmd+Z)" disabled={readOnly || !historyAvailable.undo} onClick={() => { const editor = view.current; if (editor && !editor.state.readOnly) { undo(editor); editor.focus() } }}><Undo2 size={16} aria-hidden="true" /></button>
+      <button type="button" className="tool-button" aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z)" disabled={readOnly || !historyAvailable.redo} onClick={() => { const editor = view.current; if (editor && !editor.state.readOnly) { redo(editor); editor.focus() } }}><Redo2 size={16} aria-hidden="true" /></button>
+    </div>
     <span className="editor-tool-divider" aria-hidden="true" />
     <button className="tool-button editor-find-button" onClick={() => view.current && openSearchPanel(view.current)} title="Find or replace text in this file (Ctrl/Cmd+F)"><Search size={15} aria-hidden="true" />Find &amp; replace</button>
     <EditorMenu label="Insert" icon={<Plus size={15} aria-hidden="true" />}>
       <p className="editor-menu-caption">Add to your paper</p>
-      {snippets.map((snippet, index) => <button key={snippet.label} disabled={readOnly} onClick={() => { if (view.current) insertSnippet(view.current, index) }}>{snippet.label === 'List' ? 'Bullet list' : snippet.label === 'Equation' ? 'Math equation' : snippet.label === 'Figure' ? 'Figure template' : snippet.label === 'Bold' ? 'Bold text' : snippet.label === 'Italic' ? 'Italic text' : snippet.label}{index < 2 && (index === 0 ? <Bold size={14} aria-hidden="true" /> : <Italic size={14} aria-hidden="true" />)}</button>)}
+      <button disabled={readOnly} onClick={() => setPicker('citation')}>Citation…<span className="editor-shortcut">Author / title / key</span></button>
+      <button disabled={readOnly} onClick={() => setPicker('label')}>Cross-reference…<span className="editor-shortcut">Figure / section / equation</span></button>
+      <button disabled={readOnly} onClick={() => { const editor = view.current; if (editor) setFigurePicker({ doc: editor.state.doc.toString(), from: editor.state.selection.main.from, to: editor.state.selection.main.to }) }}>Insert uploaded figure...</button>
+      {snippets.map((snippet, index) => <button key={snippet.label} disabled={readOnly} onClick={() => { if (view.current) { if (snippet.label === 'Equation') { const editor = view.current; setEquationTarget({ doc: editor.state.doc.toString(), from: editor.state.selection.main.from, to: editor.state.selection.main.to }) } else insertSnippet(view.current, index) } }}>{snippet.label === 'List' ? 'Bullet list' : snippet.label === 'Equation' ? 'Insert equation...'  : snippet.label === 'Figure' ? 'Figure template' : snippet.label === 'Bold' ? 'Bold text' : snippet.label === 'Italic' ? 'Italic text' : snippet.label}{index < 2 && (index === 0 ? <Bold size={14} aria-hidden="true" /> : <Italic size={14} aria-hidden="true" />)}</button>)}
     </EditorMenu>
     <EditorMenu label="Tools" icon={<Wrench size={15} aria-hidden="true" />}>
+      <button onClick={manageReferences}>Manage references &amp; check keys</button>
       <button onClick={() => view.current && gotoLine(view.current)}>Go to line<span className="editor-shortcut">Ctrl/Cmd G</span></button>
       <button disabled={readOnly} title="Add or remove % at the start of selected lines" onClick={() => { if (view.current) { toggleComment(view.current); view.current.focus() } }}>Comment / uncomment lines</button>
       <button disabled={!canFindPdf} title={canFindPdf ? 'Search the PDF for selected text, or the current line' : 'Compile your latest changes to search the PDF'} onClick={() => { const editor = view.current; if (!editor) return; const range = editor.state.selection.main; findPdf((range.empty ? editor.state.doc.lineAt(range.head).text : editor.state.sliceDoc(range.from, range.to)).trim().slice(0, 200)) }}>Search this text in PDF</button>
@@ -182,9 +213,27 @@ export function SourceEditor({ value, readOnly, onChange, onSave, fileId, memory
       <label>Text size <select value={preferences.fontSize} onChange={event => setPreferences({ fontSize: Number(event.target.value) })}>{Array.from({ length: 14 }, (_, i) => i + 11).map(size => <option key={size} value={size}>{size} px</option>)}</select></label>
       <label className="editor-check"><input type="checkbox" checked={preferences.wrap} onChange={event => setPreferences({ wrap: event.target.checked })} /> Wrap long lines</label>
       <label>Indentation <select value={preferences.indent} onChange={event => setPreferences({ indent: Number(event.target.value) })}><option value={2}>2 spaces</option><option value={4}>4 spaces</option></select></label>
-      <details className="editor-shortcuts"><summary>Keyboard shortcuts</summary><dl>{[['Find & replace', 'Ctrl/Cmd F'], ['Open file', 'Ctrl/Cmd P'], ['Go to line', 'Ctrl/Cmd G'], ['Bold / italic', 'Ctrl/Cmd B / I'], ['Comment lines', 'Ctrl/Cmd /'], ['Reopen tab', 'Ctrl/Cmd Shift T'], ['Compile PDF', 'Ctrl/Cmd Enter'], ['Save', 'Ctrl/Cmd S'], ['Suggestions', 'Ctrl Space'], ['Exit focus mode', 'Escape']].map(([action, key]) => <div key={action}><dt>{action}</dt><dd><kbd>{key}</kbd></dd></div>)}</dl></details>
+      <details className="editor-shortcuts"><summary>Keyboard shortcuts</summary><dl>{[['Undo', 'Ctrl/Cmd Z'], ['Redo', 'Ctrl/Cmd Shift Z'], ['Find & replace', 'Ctrl/Cmd F'], ['Open file', 'Ctrl/Cmd P'], ['Go to line', 'Ctrl/Cmd G'], ['Bold / italic', 'Ctrl/Cmd B / I'], ['Comment lines', 'Ctrl/Cmd /'], ['Reopen tab', 'Ctrl/Cmd Shift T'], ['Compile PDF', 'Ctrl/Cmd Enter'], ['Save', 'Ctrl/Cmd S'], ['Suggestions', 'Ctrl Space'], ['Exit focus mode', 'Escape']].map(([action, key]) => <div key={action}><dt>{action}</dt><dd><kbd>{key}</kbd></dd></div>)}</dl></details>
     </EditorMenu>
-  </div><div ref={host} className="source-editor" /></>
+  </div><div ref={host} className="source-editor" />{figurePicker && <FigurePicker files={paperFiles} close={() => { setFigurePicker(null); view.current?.focus() }} insert={text => { const editor = view.current; if (!editor || readOnly) throw new Error('This document is read-only.'); insertFigure(editor, text, figurePicker) }} />}
+    {equationTarget && <Suspense fallback={<p role="status">Opening equation composer...</p>}><EquationDialog initial={equationTarget.doc.slice(equationTarget.from,equationTarget.to)} readOnly={readOnly} mainPath={mainFile} amsmath={paperFiles.some(file => file.path === mainFile && hasAmsmath(file.content))} close={() => { setEquationTarget(null); view.current?.focus() }} setup={() => {
+      const editor = view.current
+      if (!editor || editor.state.readOnly || readOnly) throw new Error('This document is read-only.')
+      const main = paperFiles.find(file => file.path === mainFile)
+      if (main?.id !== fileId) { setupMath(); return }
+      if (editor.state.doc.toString() !== equationTarget.doc) throw new Error('Source changed. Reopen the dialog before adding the package.')
+      const edit = amsmathEdit(editor.state.doc.toString()); if (!edit) return
+      const transaction = editor.state.update({ changes: edit, annotations: [Transaction.userEvent.of('input.math-package'), isolateHistory.of('full')] })
+      editor.dispatch(transaction)
+      setEquationTarget({ doc: transaction.state.doc.toString(), from: transaction.changes.mapPos(equationTarget.from, 1), to: transaction.changes.mapPos(equationTarget.to, 1) })
+    }} insert={draft => {
+      const editor = view.current; if (!editor || readOnly) throw new Error('This document is read-only.')
+      checkEquationLabels(equationSource(draft), paperFiles.filter(file => file.kind === 'text').map(file => file.id === fileId ? editor.state.doc.toString().slice(0,equationTarget.from) + editor.state.doc.toString().slice(equationTarget.to) : file.content).join('\n'))
+      insertEquation(editor, draft, equationTarget)
+    }} /></Suspense>}
+    {picker && <ReferencePicker index={referenceIndex} kind={picker} readOnly={readOnly} manage={manageReferences} close={() => { setPicker(null); view.current?.focus() }} insert={(key, command) => {
+    if (view.current) insertReference(view.current, key, command)
+  }} />}</>
 
 }
 

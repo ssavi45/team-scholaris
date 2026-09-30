@@ -1,0 +1,25 @@
+.reference-dialog { width: min(700px, calc(100vw - 28px)); background: var(--bg-surface); color: var(--text-primary); border-color: var(--border-medium); }
+.reference-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.reference-heading h2 { margin: 0; }
+.reference-dialog label { display: grid; gap: 5px; margin-block: 12px; color: var(--text-primary); font-size: 12px; }
+.reference-dialog :is(input, select, textarea) { width: 100%; background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-medium); border-radius: 6px; padding: 8px 10px; }
+.reference-dialog textarea { min-height: 150px; resize: vertical; font: 12px/1.5 Consolas, monospace; }
+.reference-dialog .reference-check { display: flex; align-items: center; gap: 8px; }
+.reference-dialog .reference-check input { width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0; }
+.reference-help { color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.reference-results { max-height: 42dvh; overflow: auto; margin-block: 12px; }
+.reference-pick { display: grid; gap: 5px; width: 100%; padding: 12px; margin-block: 8px; text-align: left; border: 1px solid var(--border-medium); background: var(--bg-surface); color: var(--text-primary); border-radius: 7px; overflow-wrap: anywhere; }
+.reference-pick:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-light); }
+.reference-pick small, .reference-entry small { display: block; color: var(--text-secondary); font-size: 11px; }
+.reference-pick-action { color: var(--accent); font-size: 12px; }
+.reference-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+.reference-entry { padding: 12px; border-bottom: 1px solid var(--border-medium); overflow-wrap: anywhere; }
+.reference-entry p { margin: 4px 0; font-size: 12px; color: var(--text-secondary); }
+.reference-entry code { font-size: 12px; }
+.reference-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+.reference-import-row { padding: 10px; margin-block: 6px; border: 1px solid var(--border-medium); border-radius: 6px; display: grid; gap: 6px; overflow-wrap: anywhere; }
+.reference-import-row span { color: var(--text-secondary); font-size: 12px; }
+.reference-dialog summary { cursor: pointer; padding-block: 8px; }
+.reference-diffs pre { padding: 10px; background: var(--bg-surface); border: 1px solid var(--border-medium); font: 11px/1.6 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reference-checks { border-top: 1px solid var(--border-medium); margin-top: 12px; font-size: 12px; }
+@media (max-width: 600px) { .reference-field-grid { grid-template-columns: 1fr; } .reference-dialog { padding: 16px; } }

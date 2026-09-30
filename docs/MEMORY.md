@@ -1,5 +1,119 @@
 # Project memory
 
+## Figure insertion safety follow-up
+
+Figure insertion now captures the original source/selection, rejects stale source
+or revoked editing permission without closing the dialog, and places the cursor
+after the inserted snippet. Cancel restores editor focus. Regression coverage
+checks selection replacement, cursor position, one-step undo, stale source and
+read-only rejection. Browser interaction acceptance remains pending.
+
+## Editor Undo / Redo controls
+
+Added compact Undo and Redo buttons beside File in the source toolbar. They use
+the existing per-file CodeMirror history, disable when unavailable or read-only,
+show shortcut hints, and return focus to the editor. Manual UI acceptance pending.
+
+Small toolbar follow-up: only one editor menu stays open, action dismissal returns
+focus to its trigger unless the action already focused another control, figure
+action wording is corrected, Undo/Redo appear in keyboard help, and disabled
+toolbar/search controls no longer receive active hover styling. Shortcut hints
+can shrink in narrow menus. Manual keyboard/visual acceptance remains pending.
+
+## Recompile latency follow-up
+
+Overlapped fresh project/access metadata reads with the existing revision-bracketed
+source read after draft saves drain. Five serial read round trips become a longest
+chain of three. Both settle before access is checked and compilation proceeds;
+removed access still clears the previous preview and compiler. No stale-source
+shortcut and no autosave debounce added to compilation.
+
+Worker now memoizes successful BibTeX output only within a single clean build when
+bibliography aux directives plus local bib/bst inputs remain identical. It checks
+the bbl remains unchanged and replays bibliography diagnostics. The memo resets
+on every workspace reset; manuscript outputs are not reused between jobs or stored
+in the public package cache. Adaptive LaTeX reference passes are unchanged.
+
+Real session checks passed for updated PDF content, removed chapters, failure/
+cancellation recovery, changed bibliography and preserved missing-key warnings.
+Representative Node harness: inline equation + bibliography 889 ms, three LaTeX
+passes, one BibTeX build. Not a browser/network benchmark or guaranteed speedup.
+Read/save, figures, engine, passes and bibliography-run count appear in build details.
+
+
+## Equation composer handoff
+
+Implemented Insert > Insert equation with free-form LaTeX, four layouts, optional
+numbering/labels, editable templates/symbols, local debounced preview and source
+inspection. Selected simple equation delimiters are recognized; first-row align
+labels remain in place. Insertion is a single undoable transaction and rejects
+stale source/read-only state. Explicit amsmath setup preserves current drafts and
+uses normal autosave; setup is a separate edit, not undone by cancelling the dialog.
+
+Added KaTeX 0.18.9, lazy-loaded with local fonts, no CDN. Preview restrictions and
+custom-macro fallback are documented in SECURITY and DECISIONS. Browser connection
+was unavailable; UI/theme/keyboard/manual persistence acceptance remains pending.
+Equation helper tests, real LaTeX compilation of all layouts/building blocks,
+editor/draft regressions, lint, production build and whitespace checks passed.
+Existing bundle-size warning remains. PAPER-12 remains unstarted.
+
+
+## PAPER-11 handoff ? 2026-09-30
+
+Implemented rename/move previews in the existing file manager, including optional
+literal input/include/includegraphics/bibliography rewrites. Resolution follows
+the compiler's project-root working directory. Ambiguous/dynamic paths and custom
+search paths require manual repair. Existing dirty/recovery guards and atomic
+revision-checked manifest/history RPC remain authoritative; no schema changes.
+
+Import review now requires explicit keep/replace/new-path choices for collisions,
+lists entry candidates, and warns about unsupported engines/skipped files. Three
+original starters (article/report/multi-file thesis) use the same non-destructive
+staging flow. Existing files are retained unless replacement is explicitly chosen.
+Explorer retains search/collapsible folders and adds F2 for file actions.
+
+Insert ? Insert uploaded figure previews an authorized PNG/JPEG and adds a caption,
+label and root-relative path at the selection in an undoable transaction. Escapes
+caption text, rejects duplicate literal labels, and reminds authors about graphicx.
+Image uploads/ZIPs check signatures and dimensions (16,000px/side, 40MP), alongside
+existing size/quota checks. Backend permissions/Storage limits remain unchanged;
+client dimension checks are not a new trusted server image-decoding boundary.
+
+Automated helper and real-engine starter tests passed; test includes renamed
+chapter export/reimport and compilation. Editor/draft/reference regressions,
+lint, production build and whitespace checks passed. Existing bundle-size warning
+remains. Browser/backend manual acceptance remains pending.
+Optional General Files copying and PDF/SVG/EPS conversion remain deferred.
+PAPER-10 manual acceptance also remains pending. PAPER-12 has not started.
+
+
+## PAPER-10 handoff — 2026-09-30
+
+Implemented local citation/reference assistance. Insert → Citation searches
+author/title/year/key; Insert → Cross-reference lists labels. Both insert at the
+source selection in one undoable transaction. Known keys complete inside supported
+cite/ref commands; ambiguous duplicate keys are excluded. Tools → Manage references
+& check keys browses drafts and reports missing/duplicate keys with source links.
+
+The manager supports common entry creation/editing, UTF-8 .bib upload/paste,
+per-duplicate keep/replace/rename choices, and citation-key rename previews.
+Changed fields/keys are patched by offset, preserving unfamiliar fields, nested
+braces, strings, comments and untouched bytes. Unhandled macro/key occurrences
+and BibTeX dependency fields are flagged. Raw source and setup help remain available.
+
+Changes preview a coherent saved revision and use the existing atomic manifest
+RPC/history. Dirty/conflicted/offline/read-only states block apply; backend
+authorization/revision checks remain authoritative. No migration or dependency.
+DOI lookup and Zotero/Mendeley sync are explicitly deferred; no external lookup.
+
+Verified parser/planner/CodeMirror checks and real WASM greenwade93 repair, including
+author/year in PDF text. Editor and draft regressions, lint, production build and
+git diff whitespace checks passed. The build retains the bundle-size warning.
+Browser modal/theme/
+keyboard and end-to-end persistence acceptance remain manual; the real compiler
+test exercised the same import planner, not browser UI. PAPER-11 was subsequently
+implemented; see the newer handoff above.
+
 Find & replace no longer flex-shrinks against the editor, which clipped the
 replacement row. Its natural height can grow up to 320px (bounded by half the
 editor/45dvh), with vertical scrolling for smaller panes.
@@ -298,12 +412,14 @@ as alternative instructions.
 
 ## Known issues and open decisions
 
-1. **Google connection:** the local Supabase gateway intercepted a credentialed
+1. **Google connection — historical, user reports resolved:** the local Supabase gateway intercepted a credentialed
    browser preflight and returned wildcard origin without the required credential
    permission. `google-calendar-api.ts` uses `credentials: 'include'` for OAuth
    browser binding. Consequently the browser can reject the request before the
    function handles it. A same-origin development proxy was considered but has
-   not been implemented. Do not weaken OAuth protections to bypass this failure.
+   not been implemented at that time. The user subsequently reported resolving
+   Google Meet before PAPER-08. Do not treat this historical diagnosis as an
+   active blocker; agent end-to-end verification is still unrecorded.
 2. Function reachability or Node fetch success does not test browser CORS, cookie
    binding, user consent, live event creation, synchronization or cancellation.
    No successful end-to-end Google flow or agent-created live event is recorded.
@@ -340,7 +456,7 @@ credentials, OAuth secrets, or real project data in memory.
 
 Google Cloud client/API/consent setup was reported completed by the user. The
 backend example documents its callback and secret names, but operational browser
-authorization remains blocked. No production frontend hosting or complete hosted
+authorization was subsequently reported fixed by the user. No production frontend hosting or complete hosted
 rollout is certified. No commit, push or hosted deployment was performed for Settings.
 
 ## Handoff

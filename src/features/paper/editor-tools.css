@@ -25,9 +25,12 @@
 /* Writing controls: one compact row, with secondary actions in disclosures. */
 .editor-toolbar { position: relative; gap: 4px; padding: 5px 8px; min-height: 42px; color: var(--text-primary); }
 .editor-toolbar .tool-button, .editor-menu > summary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 5px 8px; font-size: 12px; font-weight: 500; line-height: 1.3; border-radius: 5px; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
-.editor-toolbar .tool-button:hover, .editor-menu > summary:hover, .editor-menu[open] > summary { background: var(--accent-light); color: var(--accent); }
+.editor-toolbar .tool-button:hover:not(:disabled), .editor-menu > summary:hover, .editor-menu[open] > summary { background: var(--accent-light); color: var(--accent); }
 .editor-toolbar :is(button, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .editor-tool-divider { height: 18px; width: 1px; background: var(--border-medium); margin-inline: 3px; }
+.editor-history-actions { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.editor-history-actions .tool-button { border: 1px solid var(--border-medium); background: var(--bg-surface); }
+.editor-history-actions .tool-button:disabled { opacity: .4; cursor: default; background: transparent; color: var(--text-secondary); }
 .editor-menu { position: static; }
 .editor-menu > summary { list-style: none; }
 .editor-menu > summary::-webkit-details-marker { display: none; }
@@ -38,7 +41,7 @@
 .editor-menu-content > button:hover:not(:disabled) { background: var(--accent-light); color: var(--accent); }
 .editor-menu-content > button:disabled { opacity: .5; cursor: not-allowed; }
 .editor-menu-caption { margin: 4px 0; padding: 6px 10px; font-size: 11px; line-height: 1.6; color: var(--text-secondary); }
-.editor-shortcut { flex-shrink: 0; font-size: 10px; color: var(--text-secondary); }
+.editor-shortcut { flex-shrink: 1; text-align: right; font-size: 10px; color: var(--text-secondary); }
 .editor-menu-settings .editor-menu-content { padding: 14px; }
 .editor-menu-content > label { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; color: var(--text-primary); font-size: 12px; }
 .editor-menu-content select { min-height: 30px; font-size: 12px; border: 1px solid var(--border-medium); border-radius: 4px; background: var(--bg-surface); color: var(--text-primary); }
@@ -58,7 +61,8 @@
 .source-editor .cm-panel.cm-search label { display: inline-flex; flex-direction: row; align-items: center; flex: 0 0 auto; gap: 5px; width: auto; margin: 0; font-size: 11px; line-height: 1.4; font-weight: 400; white-space: nowrap; color: var(--text-secondary); }
 .source-editor .cm-panel.cm-search input[type=checkbox] { appearance: auto; flex: 0 0 14px; width: 14px; max-width: 14px; height: 14px; min-height: 14px; padding: 0; margin: 0; border-radius: 3px; accent-color: var(--accent); }
 .source-editor .cm-panel .cm-button { display: inline-flex; align-items: center; justify-content: center; width: auto; min-height: 28px; padding: 4px 8px; margin: 0; border: 1px solid var(--border-medium); border-radius: 4px; background: var(--bg-surface); background-image: none; color: var(--text-primary); font-size: 11px; text-transform: none; cursor: pointer; }
-.source-editor .cm-panel .cm-button:hover { background: var(--accent-light); color: var(--accent); }
+.source-editor .cm-panel .cm-button:hover:not(:disabled) { background: var(--accent-light); color: var(--accent); }
+.source-editor .cm-panel .cm-button:disabled { opacity: .5; cursor: default; }
 .source-editor .cm-panel :is(input, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .source-editor .cm-panel.cm-search br { flex-basis: 100%; height: 0; }
 .source-editor .cm-panel.cm-search button[name=close] { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; font-size: 20px; line-height: 1; color: var(--text-secondary); border-radius: 4px; }

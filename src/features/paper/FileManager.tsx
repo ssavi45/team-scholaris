@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { applyPaperTree, cleanupFigures, type PaperFile } from './paper-api'
-import { imageExtension, imageType, mergeEntries, moveEntries, removeEntries, textExtension, validateTree, type TreeEntry } from './file-tree'
+import { imageExtension, imageType, imageDimensions, mergeEntries, removeEntries, textExtension, validateTree, type TreeEntry } from './file-tree'
+import { planMove, reviewImport, mainCandidates, compatibilityWarnings, type ConflictChoice } from './asset-tools'
+import { starterNames, starterTemplate } from './starter-templates'
 import type { ZipImport } from './zip-import'
 
 export default function FileManager({ initialPath = '', initialKind = 'folder', projectId, files, settings, close, applied, onBusy }: {
@@ -15,7 +17,10 @@ export default function FileManager({ initialPath = '', initialKind = 'folder', 
   const [newPath, setNewPath] = useState('')
   const [newKind, setNewKind] = useState<'text' | 'folder'>(initialKind)
   const [incoming, setIncoming] = useState<ZipImport | null>(null)
-  const [replace, setReplace] = useState(false)
+  const [choices, setChoices] = useState<Record<string, ConflictChoice>>({})
+  const [move, setMove] = useState<ReturnType<typeof planMove> | null>(null)
+  const [rewrite, setRewrite] = useState(true)
+  const [template, setTemplate] = useState<keyof typeof starterNames>('article')
   const [busy, setBusy] = useState(false)
   const working = useRef(false)
   const reader = useRef<Worker | null>(null)
@@ -25,7 +30,7 @@ export default function FileManager({ initialPath = '', initialKind = 'folder', 
   useEffect(() => { const node = dialog.current!; node.showModal(); return () => { reader.current?.terminate(); node.close() } }, [])
   const paths = [...new Set(entries.flatMap((entry) => { const parts = entry.path.split('/'); return parts.map((_, i) => parts.slice(0, i + 1).join('/')) }))].sort()
   function stage(action: () => TreeEntry[]) {
-    try { const next = action(); validateTree(next); setEntries(next); setChanged(true); setError('') }
+    try { const next = action(); validateTree(next); setEntries(next); setMove(null); setChanged(true); setError('') }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Invalid file change.') }
   }
   async function upload(list: FileList | null, zip: boolean) {
@@ -46,7 +51,7 @@ export default function FileManager({ initialPath = '', initialKind = 'folder', 
           worker.postMessage(buffer, [buffer])
         })
         worker.terminate(); reader.current = null
-        setIncoming(imported)
+        setChoices({}); setIncoming(imported)
       } else {
         const imported: TreeEntry[] = []
         if (selectedFiles.length > 100 || selectedFiles.reduce((sum, file) => sum + file.size, 0) > 30 * 1024 * 1024) throw new Error('Upload at most 100 files and 30 MiB at a time.')
@@ -54,7 +59,8 @@ export default function FileManager({ initialPath = '', initialKind = 'folder', 
           if (file.size > 5242880) throw new Error(`File exceeds 5 MiB: ${file.name}`)
           const bytes = new Uint8Array(await file.arrayBuffer())
           if (imageExtension.test(file.name)) {
-            imageType(file.name, bytes)
+            imageType(file.name, bytes); imageDimensions(file.name, bytes)
+            if (file.type && !['image/png', 'image/jpeg'].includes(file.type)) throw new Error('Figure MIME type must be PNG or JPEG.')
             imported.push({ path: file.name, content: '', kind: 'image', bytes, size_bytes: bytes.length })
           } else if (textExtension.test(file.name)) {
             const content = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
@@ -62,7 +68,7 @@ export default function FileManager({ initialPath = '', initialKind = 'folder', 
             imported.push({ path: file.name, kind: 'text', content })
           } else throw new Error(`Unsupported file: ${file.name}. Use LaTeX sources, PNG or JPEG.`)
         }
-        validateTree(imported); setIncoming({ entries: imported, skipped: [] })
+        validateTree(imported); setChoices({}); setIncoming({ entries: imported, skipped: [] })
       }
       setMessage('Review the incoming files before adding them to the staged tree.')
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to read files.'); setMessage('') }
@@ -82,21 +88,23 @@ export default function FileManager({ initialPath = '', initialKind = 'folder', 
   }
   return <dialog ref={dialog} className="project-dialog file-manager" aria-labelledby="files-title" onCancel={(event) => { event.preventDefault(); if (!busy) close() }}>
     <div className="export-heading"><div><p className="eyebrow">PAPER WORKSPACE</p><h2 id="files-title">Manage files</h2></div><button className="tool-button" onClick={close} disabled={busy} aria-label="Close file manager">&times;</button></div>
-    <p className="muted">Stage changes below, then apply them together. Rename and move do not rewrite LaTeX commands; update your input and image paths afterward.</p>
+    <p className="muted">Review file changes before applying. Saved changes are recorded in Paper history and can be restored. Limits: 100 entries, 512 KiB per source, 5 MiB per PNG/JPEG, 25 MiB total figures; 16,000px per side and 40 megapixels per image. PDF/SVG/EPS figures require conversion outside this workspace.</p>
     {error && <p role="alert" className="notice error-notice">{error}</p>}
-    <div className="manager-grid"><section><h3>File tree <span className="muted">({entries.length}/100)</span></h3><div className="manager-tree"><select size={10} aria-label="File or folder to manage" value={selected} onChange={(event) => { setSelected(event.target.value); setDestination(event.target.value) }}>{paths.map((path) => <option key={path} value={path}>{entries.find((entry) => entry.path === path)?.kind === 'folder' || !entries.some((entry) => entry.path === path) ? '\u25b8 ' : ''}{path}{path === main ? ' (main)' : ''}</option>)}</select></div>
-      <label>Rename or move to<input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="figures/result.png" disabled={!selected || busy} /></label>
-      <div className="manager-actions"><button className="button secondary compact-button" disabled={!selected || busy} onClick={() => stage(() => { const next = moveEntries(entries, selected, destination.trim()); if (main === selected || main.startsWith(selected + '/')) setMain(destination.trim() + main.slice(selected.length)); setSelected(''); return next })}>Rename / move</button><button className="button secondary compact-button" disabled={!selected || busy} onClick={() => {
+    <div className="manager-grid"><section><h3>File tree <span className="muted">({entries.length}/100)</span></h3><div className="manager-tree"><select size={10} aria-label="File or folder to manage" value={selected} onChange={(event) => { setMove(null); setSelected(event.target.value); setDestination(event.target.value) }}>{paths.map((path) => <option key={path} value={path}>{entries.find((entry) => entry.path === path)?.kind === 'folder' || !entries.some((entry) => entry.path === path) ? '\u25b8 ' : ''}{path}{path === main ? ' (main)' : ''}</option>)}</select></div>
+      <label>Rename or move to<input value={destination} onChange={(event) => { setMove(null); setDestination(event.target.value) }} placeholder="figures/result.png" disabled={!selected || busy} /></label>
+      <div className="manager-actions"><button className="button secondary compact-button" disabled={!selected || busy} onClick={() => { try { setMove(planMove(entries, selected, destination.trim(), main)); setRewrite(true); setError('') } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to preview move.') } }}>Preview rename / move</button><button className="button secondary compact-button" disabled={!selected || busy} onClick={() => {
         const count = entries.filter((entry) => entry.path === selected || entry.path.startsWith(selected + '/')).length
         if (window.confirm(`Stage deletion of ${selected} and its contents (${count} entries)? This is applied only when you save changes.`)) stage(() => { const next = removeEntries(entries, selected); setSelected(''); return next })
       }}>Delete</button></div>
-    </section><section className="manager-tools"><label>Main .tex file<select value={main} disabled={busy} onChange={(event) => { setMain(event.target.value); setChanged(true) }}><option value="">Choose main file</option>{entries.filter((entry) => entry.kind === 'text' && entry.path.endsWith('.tex')).map((entry) => <option key={entry.path}>{entry.path}</option>)}</select></label>
+    </section><section className="manager-tools"><label>Main .tex file<select value={main} disabled={busy} onChange={(event) => { setMove(null); setMain(event.target.value); setChanged(true) }}><option value="">Choose main file</option>{entries.filter((entry) => entry.kind === 'text' && entry.path.endsWith('.tex')).map((entry) => <option key={entry.path}>{entry.path}</option>)}</select></label>
       <form onSubmit={(event) => { event.preventDefault(); stage(() => { const next = mergeEntries(entries, [{ path: newPath.trim(), kind: newKind, content: '' }], false); setNewPath(''); return next }) }}><label>Create<select value={newKind} onChange={(event) => setNewKind(event.target.value as 'folder' | 'text')} disabled={busy}><option value="folder">Folder</option><option value="text">Source file</option></select></label><label>Relative path<input value={newPath} onChange={(event) => setNewPath(event.target.value)} placeholder="sections or sections/methods.tex" required disabled={busy} /></label><button className="button secondary" disabled={busy}>Stage new {newKind === 'text' ? 'file' : 'folder'}</button></form>
       <label className="manager-upload">Upload sources or figures<input type="file" multiple accept=".tex,.bib,.sty,.cls,.txt,.bst,.clo,.cfg,.def,.png,.jpg,.jpeg" disabled={busy} onChange={(event) => { void upload(event.target.files, false); event.target.value = '' }} /></label>
       <label className="manager-upload">Import LaTeX ZIP<input type="file" accept=".zip" disabled={busy} onChange={(event) => { void upload(event.target.files, true); event.target.value = '' }} /></label>
     </section></div>
-    {incoming && <section className="import-review"><h3>Import preview</h3><p className="muted">{incoming.entries.length} supported entries. {incoming.skipped.length} unsupported/generated entries skipped.</p><ul>{incoming.entries.map((entry) => <li key={entry.path}>{entry.path}{entries.some((current) => current.path.toLowerCase() === entry.path.toLowerCase()) ? ' — already exists' : ''}</li>)}</ul>{incoming.skipped.length > 0 && <details><summary>Skipped files</summary><p>{incoming.skipped.join(', ')}</p></details>}<label className="export-checkbox"><input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} />Replace matching paths in the staged tree</label><button className="button secondary compact-button" disabled={busy || !incoming.entries.length} onClick={() => stage(() => { const next = mergeEntries(entries, incoming.entries, replace); setIncoming(null); return next })}>Stage import</button></section>}
+    {move && <section className="import-review"><h3>Review rename / move</h3><p>{selected} ? {destination}</p><p>Main file: {move.main}. {move.changes.length} supported path updates.</p><ul>{move.changes.map((change,i) => <li key={i}>{change.path}: <code>{change.before}</code> ? <code>{change.after}</code></li>)}</ul>{move.warnings.map(warning => <p key={warning} className="notice">{warning}</p>)}<p>Only literal paths are updated. Review custom commands and compile afterward.</p><label className="export-checkbox"><input type="checkbox" checked={rewrite} onChange={e => setRewrite(e.target.checked)} />Update supported LaTeX paths</label><button className="button secondary" disabled={busy} onClick={() => { stage(() => rewrite ? move.entries : move.moved); setMain(move.main); setMove(null); setSelected('') }}>Stage reviewed move</button><button className="button secondary" onClick={() => setMove(null)}>Cancel move</button></section>}
+    <section className="import-review"><h3>Start from a template</h3><p>Original starter documents. Review conflicts before replacing any existing files.</p><label>Starter<select value={template} disabled={busy} onChange={e => setTemplate(e.target.value as keyof typeof starterNames)}>{Object.entries(starterNames).map(([key,name]) => <option key={key} value={key}>{name}</option>)}</select></label><button className="button secondary" disabled={busy || !!incoming || !!move} onClick={() => { setChoices({}); setIncoming({ entries: starterTemplate(template), skipped: [] }) }}>Preview starter files</button></section>
+    {incoming && <section className="import-review"><h3>Import preview</h3><p>{incoming.entries.length} supported entries; {incoming.skipped.length} skipped. Renaming imported paths may require repairing their LaTeX references.</p>{compatibilityWarnings(incoming.entries).map(warning => <p key={warning} className="notice">{warning}</p>)}<p>Detected main files: {mainCandidates(incoming.entries).join(', ') || 'None. Choose the main .tex file after staging.'}</p><ul>{incoming.entries.map(entry => { const collision = entries.some(current => current.path.toLowerCase() === entry.path.toLowerCase() && !(current.kind === 'folder' && entry.kind === 'folder')); const choice = Object.hasOwn(choices,entry.path) ? choices[entry.path] : undefined; return <li key={entry.path}><strong>{entry.path}</strong>{collision && <><label>Existing path ? choose an action<select value={choice?.action ?? ''} onChange={e => setChoices(prev => ({ ...prev, [entry.path]: { action: e.target.value as ConflictChoice['action'], path: choice?.path } }))}><option value="">Choose?</option><option value="keep">Keep existing</option><option value="replace">Replace existing</option><option value="rename">Import at a different path</option></select></label>{choice?.action === 'rename' && <label>New path<input value={choice.path ?? ''} onChange={e => setChoices(prev => ({ ...prev, [entry.path]: { action: 'rename', path: e.target.value } }))} /></label>}</>}</li> })}</ul>{incoming.skipped.length > 0 && <details><summary>Skipped files ? check compatibility</summary><p>{incoming.skipped.join(', ')}</p></details>}<button className="button secondary" disabled={busy || !incoming.entries.length || !!move} onClick={() => stage(() => { const next = reviewImport(entries, incoming.entries, choices); setIncoming(null); return next })}>Stage reviewed import</button><button className="button secondary" disabled={busy} onClick={() => setIncoming(null)}>Discard import</button></section>}
     <p role="status" className="export-status">{message || (changed ? 'Changes staged. Your project is unchanged until you apply them.' : 'No changes staged.')}</p>
-    <div className="dialog-actions"><button className="button secondary" disabled={busy} onClick={close}>Cancel</button><button className="button primary" disabled={busy || !changed || !!incoming} onClick={() => void save()}>{busy ? 'Working...' : 'Apply changes'}</button></div>
+    <div className="dialog-actions"><button className="button secondary" disabled={busy} onClick={close}>Cancel</button><button className="button primary" disabled={busy || !changed || !!incoming || !!move} onClick={() => void save()}>{busy ? 'Working...' : 'Apply changes'}</button></div>
   </dialog>
 }

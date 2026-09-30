@@ -50,3 +50,25 @@ export function imageType(path: string, bytes: Uint8Array) {
   if (/\.(jpg|jpeg)$/.test(path) && jpeg) return 'image/jpeg'
   throw new Error(`Image contents do not match the filename: ${path}`)
 }
+
+export function imageDimensions(path: string, bytes: Uint8Array) {
+  const mime = imageType(path, bytes), view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  let width = 0, height = 0
+  if (mime === 'image/png') { width = view.getUint32(16); height = view.getUint32(20) }
+  else {
+    let at = 2
+    while (at + 4 <= bytes.length) {
+      if (bytes[at] !== 255) break
+      const marker = bytes[at + 1]; at += 2
+      if (marker === 255) { at--; continue }
+      if (marker === 217 || marker === 218) break
+      if (marker === 1 || marker >= 208 && marker <= 215) continue
+      const size = view.getUint16(at)
+      if (size < 2 || at + size > bytes.length) break
+      if ([192,193,194,195,197,198,199,201,202,203,205,206,207].includes(marker) && size >= 7) { height = view.getUint16(at + 3); width = view.getUint16(at + 5); break }
+      at += size
+    }
+  }
+  if (!width || !height || width > 16000 || height > 16000 || width * height > 40000000) throw new Error(`Invalid or oversized image dimensions: ${path}. Maximum 16,000px per side and 40 megapixels.`)
+  return { width, height }
+}

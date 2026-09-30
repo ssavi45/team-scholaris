@@ -42,6 +42,18 @@ try {
   const refs = [{ path: 'main.tex', content: String.raw`\documentclass{article}\begin{document}\section{Intro}\label{sec:a}See \ref{sec:a} and \cite{test}.\bibliographystyle{plain}\bibliography{references}\end{document}` }, { path: 'references.bib', content: '@book{test,author={A Writer},title={A Book},year={2026},publisher={Press}}' }]
   const referenced = await session.compile(refs, new AbortController().signal, () => {})
   assert.doesNotMatch(referenced.log, /Citation .+ undefined|Reference .+ undefined/)
+  assert.equal(referenced.bibtexRuns, 1, 'Unchanged bibliography inputs run BibTeX once across passes')
+  const editedRefs = refs.map(file => ({ ...file, content: file.path === 'main.tex' ? file.content.replace('See ', 'Inline $x^2 + y^2 = z^2$. See ') : file.content }))
+  const edited = await timed('Inline equation with bibliography, warm engine', () => session.compile(editedRefs, new AbortController().signal, () => {}))
+  assert.equal(edited.bibtexRuns, 1)
+  const changedBib = editedRefs.map(file => ({ ...file, content: file.path.endsWith('.bib') ? file.content.replace('A Book','Updated Book') : file.content }))
+  const changed = await session.compile(changedBib,new AbortController().signal,()=>{})
+  assert.equal(changed.bibtexRuns, 1, 'New jobs regenerate changed bibliography')
+  const changedTask = getDocument({data:changed.pdf.slice()}); const changedPdf = await changedTask.promise
+  const changedText = (await (await changedPdf.getPage(1)).getTextContent()).items.map(item=>item.str??'').join(' ')
+  assert.match(changedText,/Updated Book/); await changedTask.destroy()
+const missing = await session.compile(refs.map(file => ({...file,content:file.path.endsWith('.bib')?'':file.content})),new AbortController().signal,()=>{})
+  assert.match(missing.log,/undefined|didn't find a database entry/i,'Bibliography diagnostics survive skipped BibTeX passes')
   console.log('PASS reused engine, clean deleted-source isolation, changed PDF, adaptive passes, failure/cancel recovery and bibliography references')
   console.log('Node harness timings, not browser/network benchmarks. Persistent browser IndexedDB cache requires manual validation.')
 } finally { session.dispose() }

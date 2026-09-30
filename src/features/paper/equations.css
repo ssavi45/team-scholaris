@@ -1,0 +1,37 @@
+.equation-dialog { width: min(820px, calc(100vw - 24px)); max-height: 90dvh; padding: 0; color: var(--text-primary); background: var(--bg-surface); border: 1px solid var(--border-medium); border-radius: 12px; }
+.equation-dialog[open] { display: flex; flex-direction: column; }
+.equation-heading, .equation-footer { display: flex; align-items: center; gap: 12px; padding: 18px 22px; flex-shrink: 0; }
+.equation-heading { justify-content: space-between; border-bottom: 1px solid var(--border-medium); }
+.equation-heading h2 { margin: 0 0 4px; }
+.equation-heading p, .equation-help, .equation-package p, .equation-package small, .equation-blocks p { margin: 4px 0; font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+.equation-body { padding: 18px 22px; overflow: auto; min-height: 0; }
+.equation-modes { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; border: 0; padding: 0; margin: 0 0 14px; }
+.equation-modes legend { font-size: 13px; margin-bottom: 8px; }
+.equation-modes label { display: flex; align-items: flex-start; gap: 7px; padding: 10px; border: 1px solid var(--border-medium); border-radius: 8px; cursor: pointer; margin: 0; }
+.equation-modes label.selected { border-color: var(--accent); background: var(--accent-light); }
+.equation-modes strong { display: block; font-size: 12px; }
+.equation-modes small { display: block; font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+.equation-dialog input:is([type=radio],[type=checkbox]) { width: 15px; height: 15px; min-height: 0; margin: 2px 0; padding: 0; flex-shrink: 0; accent-color: var(--accent); }
+.equation-blocks { border: 1px solid var(--border-medium); padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; }
+.equation-dialog summary { cursor: pointer; font-size: 12px; }
+.equation-blocks summary span { color: var(--text-secondary); margin-left: 8px; }
+.equation-blocks > div { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.equation-blocks button { width: auto; }
+.equation-label { display: grid; gap: 5px; font-size: 13px; color: var(--text-primary); margin-block: 12px 8px; }
+.equation-label span { font-size: 11px; color: var(--text-secondary); }
+.equation-dialog textarea, .equation-label input { width: 100%; padding: 10px 12px; color: var(--text-primary); background: var(--bg-surface); border: 1px solid var(--border-medium); border-radius: 7px; }
+.equation-dialog textarea { min-height: 125px; max-height: 35dvh; resize: vertical; font: 14px/1.6 Consolas, monospace; }
+.equation-check { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 12px; }
+.equation-package { margin: 14px 0; padding: 12px; border: 1px solid var(--border-medium); border-radius: 8px; }
+.equation-package small { display: block; margin-top: 6px; }
+.equation-preview-section { margin: 16px 0; padding: 14px; border: 1px solid var(--border-medium); border-radius: 8px; }
+.equation-preview-heading { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.equation-preview-heading span { color: var(--text-secondary); font-size: 11px; }
+.equation-preview { overflow: auto; padding: 16px 4px; min-height: 70px; max-height: 250px; }
+.equation-preview .katex { color: var(--text-primary); font-size: 1.2em; }
+.equation-warning { color: var(--text-primary); font-size: 12px; overflow-wrap: anywhere; }
+.equation-output pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 Consolas, monospace; }
+.equation-footer { border-top: 1px solid var(--border-medium); }
+.equation-footer > span { margin-right: auto; font-size: 11px; color: var(--text-secondary); }
+.equation-dialog :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media(max-width: 600px) { .equation-modes { grid-template-columns: repeat(2,minmax(0,1fr)); } .equation-heading, .equation-body, .equation-footer { padding: 14px; } .equation-footer { flex-wrap: wrap; } .equation-footer > span { width: 100%; } }
