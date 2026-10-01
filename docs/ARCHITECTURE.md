@@ -1,5 +1,80 @@
 # Architecture
 
+Live-writing presence includes the authenticated actor ID for avatar lookup. The
+toolbar reuses the membership-checked project-avatar API and private signed image
+URLs; it groups multiple device connections into one portrait per coauthor. Cursor
+markers and avatar rings use the same gateway-assigned color. Presence includes
+the recipient; the toolbar shows everyone while editor decorations skip local-user
+cursors to avoid duplicating the native caret.
+
+## Live-writing browser integration
+
+PaperPage discovers enrolled files through membership-checked list_shared_paper_files;
+legacy editing is disabled for those files. VITE_PAPER_SHARED_URL enables a lazy
+Live writing dialog. Owner enrollment uses the displayed source version and refuses
+stale seeds. Dialog owns one Y.Doc, Y.UndoManager and CodeMirror binding without
+standalone history. Parent polling never replaces its document/connection.
+
+SharedClient persists pending CRDT updates and the full local recovery checkpoint
+in IndexedDB before transport sends. ACK clears only the batch it confirms; missing
+ACK is retried idempotently. Reopening requires explicit recovery; epoch mismatch
+does not merge. Web Locks serializes a user/project/file across local tabs. Account
+change purges recovery; storage/limit/rejection failures retain download and freeze
+writing. The dialog blocks sign-out with pending/recovered work and warns on close.
+
+Cursors use Yjs relative positions, rendered as named CodeMirror decorations. Peer
+identity/color come from the gateway's verified actor/profile, not client names.
+Presence is ephemeral and gateway-local, checked on delivery and removed on close;
+heartbeat detects dead peers. No optional follow mode yet. End shared session is
+owner-only and CAS protected; unsent old-epoch edits require separate recovery.
+Full shared lifecycle and immutable multi-file snapshot improvements remain future work.
+
+## PAPER-13 socket transport (B1)
+
+`server/coediting/websocket-server.mjs` attaches to an HTTP(S) server. Only the exact
+`/paper-shared` path, explicit Origin allowlist and `scholaris-paper-v1` subprotocol
+are accepted. Tokens travel in join/refresh frames, never URLs. Each socket binds
+one verified user/file/epoch. B2 adds explicit owner-only version-checked start/end.
+The CLI binds loopback by default and requires TLS for non-loopback addresses.
+
+Protocol: join {token,file,epoch?} -> state {epoch,sequence,editable,state};
+update {id,epoch,update} -> state when changed, then ack {id,epoch,sequence} after DB
+commit, or rejected {id,code,message}. Binary CRDT values are base64. sync requests
+an authorized checkpoint; refresh {token} requires the same verified user. Reconnect
+must pass its previous epoch and retain pending updates until ack; stale epochs
+close with 4409 and require separate recovery. Replaying committed Yjs updates is
+idempotent. Full bounded checkpoints favor correctness over bandwidth in this pilot.
+
+Each socket polls authorized durable state every two seconds, so other gateways'
+commits and permission changes are observed without an unchecked room broadcast.
+Client messages serialize with a bounded queue. Defaults: 50 connections, ten per
+remote IP, 60 upgrades/IP/minute, 120 messages/user/minute per gateway, eight queued
+operations/socket, 360000-byte input and approximately 3MB outbound backlog. Pings
+detect lost peers. Production needs distributed quotas and measured fan-out costs.
+No CodeMirror/offline/presence integration yet. Local tests use WS, not hosted WSS.
+
+## PAPER-13 authenticated session slice
+
+The server-only session service accepts a privileged Supabase client and explicit
+project allowlist (empty by default). Auth.getUser verifies tokens on each operation.
+Service-only RPC paper_shared_session locks project then file/state, rechecks current
+verified membership/status, and atomically commits a bounded Yjs checkpoint and
+materialized paper_files text. Existing quotas, version clock, revision trigger and
+history remain authoritative. CAS sequence retries merge competing gateway writes
+onto fresh DB state; no process-local room lease/cache is authoritative.
+
+Owner enrollment captures safety history and checks seed source version/content.
+A table trigger fences legacy updates/deletes, including manifests/restores. Disable
+keeps materialized text/history and removes active CRDT state; reenrollment assigns
+a new epoch. Retained causal rollback archives and coordinated lifecycle remain
+beta gates. This is a direct service, not a public HTTP/WebSocket endpoint.
+
+Validation runs in disposable Node workers: 3s deadline, 64MiB old/16MiB young heap,
+2MiB stack, 256KiB update, 512KiB text, 2MiB state; eight pending validators per
+service instance. These are not complete process/container resource limits.
+The B1 transport above adds sockets and TLS configuration. Distributed rate controls,
+browser/offline binding, presence and immutable multi-file snapshots remain later slices.
+
 ## Empty Paper manifests and simplified file management
 
 FileManager retains atomic revision-checked manifest writes and private-figure

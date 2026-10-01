@@ -1,5 +1,47 @@
 # Test plan
 
+## Live-writing client and editor
+
+`npm run test:shared-transport` now runs the actual frontend SharedClient with real
+local sockets and fake-indexeddb: live update, offline edit, close/reload, explicit
+recovery before merge, relative cursor payload, account cleanup, owner session end
+and version-checked enrollment. `npm run test:shared-editor` mounts actual CodeMirror
+views in jsdom and verifies concurrent merging plus undo/redo that preserves another
+author's changes. These are not visual/real-browser/IME acceptance.
+Manual: open two accounts, start/join the same file, type simultaneously; disconnect,
+edit, reopen and restore; check colored named cursors, keyboard/IME, light/dark,
+small screens, same-account tab lock, storage-full download and session ending.
+Check connected-coauthor profile portraits (preset/upload), initials fallback,
+deduplication across devices, hover names and rings matching cursor colors in both
+themes. Socket tests assert the avatar user ID matches the authenticated actor.
+Both viewers must see themselves and their coauthors with matching colors; own
+cursor decorations must not duplicate the native caret. Check same avatar order.
+
+## PAPER-13 real socket transport
+
+Run `npm run test:shared-transport` with local Supabase. Creates five disposable
+Auth accounts, a generated paper and temporary loopback servers; closes/cleans them
+in finally. Exercises actual socket framing across two gateway instances, concurrent
+merging, state fan-out, disconnect/reconnect/idempotent replay, refreshed identity,
+fresh gateway hydration, idle revocation, read-only demotion/archive, rejected
+updates without successful ACK, stale epochs, disallowed origins/URL queries,
+authentication deadlines, invalid tokens, oversized/malformed input and rate limits.
+This is not browser/CodeMirror/IME testing, an abrupt OS-process crash, a distributed
+rate-limit proof, a slow-client load soak, or a deployed WSS certificate check.
+
+## PAPER-13 slice A integration
+
+Run `npm run test:shared-sessions` with local Docker/Supabase and migration
+20261001000300 applied. It asserts the local URL, creates five real disposable Auth
+accounts and a generated paper, then cleans up. CLI credentials stay in memory.
+Passed locally: five concurrent gateway writers converge; duplicate retry is
+idempotent; fresh service recovers state; client RPC impersonation and invalid tokens
+fail; non-allowlisted enrollment fails; malformed/schema/size/stale-epoch writes
+fail; legacy save/delete-all are fenced; demotion/removal/archive take effect;
+disable/reenroll changes epoch and rollback restores versioned saving.
+This is direct service/RPC integration, not browser transport or a process-kill
+crash test. Browser/offline/IME, transport loss, crash and soak gates remain open.
+
 ## Empty workspace and file-management regression
 
 `node scripts/test-empty-paper.mjs` checks main-file selection/validation.

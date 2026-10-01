@@ -1,5 +1,13 @@
 # Product Requirements Document
 
+## Shared-writing pilot
+
+Coauthors can open Live writing for a selected source, edit concurrently, undo their
+own changes, see named cursors/selections and recover unsent edits on the same device.
+Starting/ending is owner-controlled. The pilot keeps legacy edits fenced while a
+file is enrolled. Browser UI is implemented; full lifecycle, optional follow mode,
+cross-gateway presence and real-browser release acceptance remain outside this slice.
+
 ## Coediting architecture proof (PAPER-12)
 
 Prove that concurrent authors can merge edits without silent loss before offering

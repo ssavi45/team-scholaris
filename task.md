@@ -1,10 +1,41 @@
 # Paper workspace roadmap and build tracker
 
-Last updated: 2026-10-01. **PAPER-12 local architecture proof delivered; production integration gate open.**
+Last updated: 2026-10-01. **PAPER-13 live-writing UI, offline recovery and named cursors implemented for a local pilot.**
 This is the only task tracker. Current product focus: make Paper the reason a
 research team chooses Scholaris. Previous delivery records remain below.
 
-## Paper file-management simplification
+## PAPER-13 current handoff
+
+- [x] Explorer collapse beside its heading, with sidebar-local reopening and
+  controls available in Files/Outline/Search.
+- [x] All connected-coauthor avatars, including yourself, with matching color rings,
+  stable ordering and hover names; local caret remains unduplicated.
+- [x] Compact Live writing controls and centered responsive session dialog;
+  shorter Close/Start/Join/End labels with distinct action explanations.
+- [x] Slice A: server-only service verifies real Supabase tokens; project allowlist
+  defaults empty. Owner enrollment captures safety history.
+- [x] Durable PostgreSQL state/text transaction, CAS retries across gateways,
+  file identity/epoch, worker validation and legacy mutation fence.
+- [x] Five generated local accounts: concurrent edits, duplicate retry, fresh gateway,
+  invalid updates, stale epochs, demotion/revocation/archive and rollback.
+- [x] Slice B1: real WebSocket transport, origin/connection/payload/per-instance rate
+  limits, verified reconnect/refresh, durable acknowledgements and authorized fan-out.
+  Local five-account/two-gateway socket tests; server supports direct TLS configuration.
+- [x] Slice B2: Live writing dialog with Y.Text binding, own-action undo, account/file
+  IndexedDB queue, explicit reload recovery, download, reconnect and same-browser lock.
+- [x] Slice C: named relative cursors/selections and connected-coauthor list for one gateway.
+- [ ] Optional follow collaborator, cross-gateway presence, visual/IME/mobile acceptance.
+- [ ] Distributed quotas and hosted TLS acceptance remain production gates.
+- [ ] Slice D: coordinated enrollment/lifecycle, retained CRDT rollback archives,
+  immutable multi-file compile/export snapshots; browser/IME/crash/load acceptance.
+
+The requested local project is allowlisted; no real source files were automatically
+enrolled. Select a source > Live writing > Start shared session as owner. Owners
+can End shared session to return to legacy editing. Rename/delete/restore remain
+blocked while enrolled. Close live writing to compile/export saved sources.
+PAPER-13 lifecycle and release acceptance remain in progress.
+
+## Paper file-management delivery
 
 - [x] Separate New source file / New folder dialogs from Upload or manage files;
   validate names and persist with a single Create action.

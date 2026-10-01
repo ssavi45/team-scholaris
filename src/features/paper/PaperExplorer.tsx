@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FileText, Folder, FolderPlus, FilePlus2, MoreHorizontal, Plus, Search, X } from 'lucide-react'
+import { FileText, Folder, FolderPlus, FilePlus2, MoreHorizontal, Plus, Search, PanelLeftClose } from 'lucide-react'
 import type { PaperFile } from './paper-api'
 
 export type ManageRequest = { path?: string; kind?: 'text' | 'folder' }
@@ -43,11 +43,11 @@ export function PaperExplorer({ files, selected, mainFile, editable, disabled, c
     </ul>
   }
   return <>
-    <div className="paper-pane-title"><strong>Explorer</strong>{editable && <details className="paper-popover paper-add"><summary title="Add or organize files" aria-label="Add or organize files"><Plus size={17} /></summary><div>
+    <div className="paper-pane-title"><button className="tool-button" aria-label="Collapse explorer" title="Collapse explorer" aria-expanded={true} aria-controls="paper-file-sidebar" onClick={close}><PanelLeftClose size={17} /></button><strong>Explorer</strong>{editable && <details className="paper-popover paper-add"><summary title="Add or organize files" aria-label="Add or organize files"><Plus size={17} /></summary><div>
       <button disabled={disabled} onClick={() => manage({ kind: 'text' })}><FilePlus2 size={15} /> New source file</button>
       <button disabled={disabled} onClick={() => manage({ kind: 'folder' })}><FolderPlus size={15} /> New folder</button>
       <button disabled={disabled} onClick={() => manage()}>Upload or manage files</button>
-    </div></details>}<button className="tool-button" aria-label="Collapse explorer" onClick={close}><X size={16} /></button></div>
+    </div></details>}</div>
     <label className="paper-file-filter"><Search size={15} /><span className="sr-only">Filter paper files</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Find a file..." type="search" /></label>
     <div ref={treeRoot} className="paper-tree-scroll">{visible.length ? tree() : <p className="muted">No matching files.</p>}</div>
     {disabled && editable && <p className="paper-explorer-hint">Finish saving and review drafts before organizing files.</p>}

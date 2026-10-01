@@ -1,5 +1,103 @@
 # Project memory
 
+## Explorer toggle placement - 2026-10-01
+
+Moved collapse control from the project bar to the left of the Explorer heading,
+replacing the redundant right-hand close icon. A slim left-side control reopens
+the sidebar when hidden; Outline/Search retain a sidebar collapse control.
+Build, lint and whitespace checks passed. Visual browser verification remains pending.
+
+## Live coauthor avatars - 2026-10-01
+
+Follow-up: presence now includes yourself, so every viewer sees the full connected
+group. Avatars share a stable order and self uses the current profile, labelled
+'(you)' on hover. Source cursor decorations skip self to avoid a duplicate caret.
+Socket regressions verify both viewers receive self and coauthors with consistent
+colors. Build/lint passed; local gateway restarted for this presence change.
+
+Live-writing toolbar now shows connected coauthor profile avatars with colored
+rings matching their cursor/selection colors, deduplicated by verified user ID.
+Uses existing membership-checked avatar loading and signed upload URLs, refreshing
+before expiry; initials fallback and accessible/hover names remain available.
+Cursor names remain visible in source to identify edits. Visual acceptance pending.
+Local socket identity regression, production build, lint and whitespace checks passed.
+Local gateway restarted with avatar identities and matching orange/purple palette.
+
+## Live-writing layout follow-up - 2026-10-01
+
+Fixed inherited full-width buttons in the project bar and shared-writing dialog.
+The dialog is explicitly centered, compact before joining and expanded for editing.
+Shortened actions to Close, Start/Join session and End session; kept existing
+pending-work warnings and owner-only ending behavior. Visual acceptance pending.
+Production build, lint and whitespace checks passed; existing bundle-size warning remains.
+
+## PAPER-13 live-writing UI and recovery - 2026-10-01
+
+Implemented lazy Live writing dialog, CodeMirror/Y.Text binding and own-author undo;
+account/project/file IndexedDB queues saved before send; explicit restore/discard
+after reopening, draft download, reconnect/idempotent ACK retry and account cleanup.
+Web Locks prevents competing tabs from overwriting the same local recovery copy.
+Storage failure freezes edits with download available. Seven-day recovery retention.
+
+Server-authorized names, relative cursor/selection markers and connected peer list
+are delivered within one gateway. Same-gateway commits/cursors prompt authorized
+peer refresh; periodic reads retain cross-gateway text convergence. Cross-gateway
+presence and follow mode are not implemented. Owner start/end controls capture
+history/use existing session fencing; legacy editor is read-only for enrolled files.
+Migration 20261001000400 is applied locally. Hosted environments need migration.
+
+User-selected project is configured in ignored local frontend/backend env files.
+Loopback gateway runs on port 5440. No real file was enrolled or edited by the agent.
+Use Live writing in the project, then owner starts a file's session. End it before
+rename/delete/restore. Close dialog before compiling/exporting acknowledged text.
+
+Tests passed: real socket provider + IndexedDB offline/reload/explicit recovery,
+named relative cursors, account cleanup; actual CodeMirror DOM concurrent binding
+and own-author undo/redo; build/lint. Browser skill found no connected browser, so
+visual/mobile/IME acceptance remains unverified. No hosted deployment performed.
+
+## PAPER-13 socket transport slice B1 - 2026-10-01
+
+Added a runnable pilot WebSocket server (`dev:shared-transport`) using ws. Default
+bind is loopback; non-loopback startup requires TLS key/certificate. Backend-only
+configuration example is server/coediting/.env.example. No real paper enrolled,
+no hosted deployment and no browser UI import/toggle. Yjs is now a runtime dependency.
+
+Actual loopback socket tests cover five Auth accounts across two independent gateway
+instances, concurrent convergence, authorized polling fan-out, reconnect/duplicate
+replay, new gateway hydration, token refresh/account-change rejection, idle removal,
+read-only demotion, origin/query rejection, auth deadline and payload/protocol/rate
+limits. These complement the direct RPC tests; they do not prove browser/IME, WSS
+certificate deployment or process-kill durability. Config/secrets are never logged.
+
+Next bounded slice is B2: editor Y.Text binding, own-action undo and durable offline
+queue/recovery. Do not enroll real papers until lifecycle and editor integration are
+complete. No cursor/presence work was started in B1. Per-process rate limiting is
+implemented; distributed quotas and public-host load/fuzz acceptance remain open.
+
+B1 validation passed: final real-socket integration (including archive and malformed
+CRDT rejection without ACK), lint, production build, Node syntax and whitespace
+checks. Existing bundle-size warning remains. Server .env.local is Git-ignored.
+
+## PAPER-13 slice A - 2026-10-01
+
+Added `server/coediting/session-service.mjs` and local migration
+20261001000300: real Auth.getUser verification, transactional current membership
+checks, owner enrollment with safety history, atomic CRDT/text persistence, CAS
+retry, disposable validation workers and legacy write fencing. The project allowlist
+defaults empty. No public transport, Vite import or workspace toggle exists yet.
+Existing user papers are unchanged; migration applied locally only.
+
+Five generated local accounts passed concurrent merges, duplicate retry, fresh
+gateway recovery, malformed/schema/size rejection, stale epochs, demotion/removal/
+archive and rollback checks. Fixtures were cleaned up. PAPER-13 is not complete:
+next is WSS and CodeMirror/offline binding, then presence and lifecycle integration.
+Do not enroll real files yet; legacy tree/restore operations are blocked on pilot
+files. Browser, crash, soak and hosted acceptance remain open.
+
+Validation: local shared-session integration, PAPER-12 regression, lint, production
+build and whitespace checks passed. Existing bundle-size warning remains.
+
 File manager close control now uses a 22px X in a bordered 44px target, theme-aware
 contrast and visible hover/keyboard focus states. Busy-state disabling is retained.
 

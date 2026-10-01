@@ -13,7 +13,7 @@ import { readRecovery, deleteRecovery, clearProjectRecovery, type RecoveryDraft 
 import { DraftPanel } from './DraftPanel'
 import { PaperExplorer, type ManageRequest } from './PaperExplorer'
 import { PaperCollaborators } from './PaperCollaborators'
-import { History, ArrowLeft, PanelLeft, Columns2, PanelRight, Maximize2, Minimize2, Info, MoreHorizontal, FileText, X, Check } from 'lucide-react'
+import { History, ArrowLeft, PanelLeft, PanelLeftOpen, Columns2, PanelRight, Maximize2, Minimize2, Info, MoreHorizontal, FileText, X, Check } from 'lucide-react'
 import './workspace-layout.css'
 import { createCompilerSession, CompileError, sourceSignature, waitForPreparation, type Compilation } from './compiler'
 import { parseCompileDiagnostics, type CompileIssue } from './compile-diagnostics'
@@ -31,6 +31,7 @@ const HistoryPanel = lazy(() => import('./HistoryPanel'))
 const ReplaceProjectDialog = lazy(() => import('./ReplaceProjectDialog'))
 const FigurePreview = lazy(() => import('./FigurePreview'))
 const ReferenceManager = lazy(() => import('./ReferenceManager'))
+const SharedWriting = lazy(() => import('./SharedWriting'))
 
 export function PaperPage() {
   const { projectId = '' } = useParams()
@@ -41,6 +42,7 @@ export function PaperPage() {
 function PaperWorkspace({ projectId }: { projectId: string }) {
   const { user } = useAuth()
   const userId = user?.id ?? ''
+  const [liveWriting, setLiveWriting] = useState(false)
   const [compilerSession] = useState(() => createCompilerSession())
   const [figureCache] = useState(() => new Map<string, Uint8Array<ArrayBuffer>>())
   useEffect(() => () => figureCache.clear(), [figureCache])
@@ -369,9 +371,9 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       <span className="paper-permission">{editable ? 'Can edit' : 'Read-only'}</span>
       <button className={`tool-button paper-save-state${attention ? ' needs-attention' : ''}`} aria-controls="paper-save-details" aria-expanded={saveDetails || attention} onClick={() => setSaveDetails(!saveDetails)} title={status || 'Save status and draft protection'}>{attention ? <Info size={14} /> : saving ? <span className="loading-spinner" /> : !dirty ? <Check size={14} /> : null}{!online ? 'Offline' : attention ? 'Review drafts' : saving ? 'Saving...' : dirty ? 'Unsaved changes' : 'Saved'}</button>
       {project && settings && <button className="tool-button" title="Paper history" disabled={busy} onClick={() => setHistoryOpen(true)}><History size={16} /><span className="paper-history-label">History</span></button>}
+      {import.meta.env.VITE_PAPER_SHARED_URL && selected?.kind === 'text' && <button className="button secondary paper-live-button" title="Write together in the selected file" aria-haspopup="dialog" disabled={busy || saving || dirty || recovery.length > 0 || attention} onClick={() => setLiveWriting(true)}>Live writing</button>}
       {project && <PaperCollaborators projectId={projectId} />}
       <div className="paper-layout-controls" aria-label="Workspace layout">
-        <button className="tool-button" title="Toggle explorer" aria-label="Toggle explorer" aria-expanded={sidebar && !focus} onClick={() => { setSidebar(focus ? true : !sidebar); setFocus(null) }}><Icon name="files" /></button>
         {(['source', 'split', 'pdf'] as const).map(mode => { const Glyph = mode === 'source' ? PanelLeft : mode === 'split' ? Columns2 : PanelRight; return <button className={mode === 'split' ? 'tool-button studio-split' : 'tool-button'} key={mode} title={mode === 'source' ? 'Editor only' : mode === 'pdf' ? 'PDF only' : 'Split view'} aria-label={mode === 'source' ? 'Editor only' : mode === 'pdf' ? 'PDF only' : 'Split view'} aria-pressed={(focus ?? viewMode) === mode} onClick={() => { setFocus(null); setViewMode(mode) }}><Glyph size={17} /></button> })}
       </div>
       {focus && <button className="tool-button" onClick={() => setFocus(null)}><Minimize2 size={16} />Exit full screen</button>}
@@ -393,8 +395,9 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
         setSelected(first)
       })}>{busy ? 'Opening...' : settings ? 'Upload files or start a new paper' : 'Create your paper'}</button> : <p>An owner or member can add files to this paper.</p>}</section> : <>
         <div className={`paper-layout${sidebar && !focus ? ' files-open' : ''}`} style={{ '--explorer-width': `${explorerWidth}px` } as CSSProperties}>
+          {!sidebar && !focus && <div className="paper-explorer-rail"><button className="tool-button" title="Open explorer" aria-label="Open explorer" aria-expanded={false} aria-controls="paper-file-sidebar" onClick={() => setSidebar(true)}><PanelLeftOpen size={17} /></button></div>}
           <aside id="paper-file-sidebar" className="paper-files" aria-label="Paper source files" hidden={!sidebar || !!focus}>
-            <PaperNavigation key={sourceSearchRequest.token} initialQuery={sourceSearchRequest.text} files={navigationFiles} mainFile={mainFile} mode={navigationMode} setMode={setNavigationMode} navigate={navigateSource} canReplace={!replaceBlocked} replace={(query, replacement, matchCase) => setReplacementRequest({ query, replacement, matchCase })}>
+            <PaperNavigation key={sourceSearchRequest.token} initialQuery={sourceSearchRequest.text} files={navigationFiles} mainFile={mainFile} mode={navigationMode} setMode={setNavigationMode} collapse={() => setSidebar(false)} navigate={navigateSource} canReplace={!replaceBlocked} replace={(query, replacement, matchCase) => setReplacementRequest({ query, replacement, matchCase })}>
               <PaperExplorer files={files} selected={selected?.id} mainFile={mainFile} editable={!!editable} disabled={busy || saving || dirty || compiling || recovery.length > 0} choose={file => { choose(file); if (window.matchMedia('(max-width: 900px)').matches) setSidebar(false) }} manage={openManager} close={() => setSidebar(false)} revealToken={revealToken} />
             </PaperNavigation>
           </aside>
@@ -422,7 +425,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
                 if (!main || !current || current.remote !== undefined || current.error) throw new Error('The main file is unavailable or needs draft review.')
                 const edit = amsmathEdit(current.text)
                 if (edit) store.edit(main.id, current.text.slice(0,edit.from) + edit.insert + current.text.slice(edit.to))
-              }} paperFiles={navigationFiles} referenceIndex={referenceIndex} manageReferences={() => setReferencesOpen(true)} fileActions={fileActions} key={selected.id} fileId={selected.id} memory={editorMemory} value={draft} onChange={setDraft} readOnly={!editable || busy || activeDocument?.remote === null} onSave={save} jump={editorJump} preferences={textPreferences} setPreferences={updatePreferences} quickSwitch={() => setQuickSwitch(true)} reopen={reopenTab} compile={() => void recompile()} canFindPdf={!!output && !stale} findPdf={text => { if (!text || !output || stale) return; setPdfSearchRequest(previous => ({ text, token: (previous?.token ?? 0) + 1 })); setFocus(null); setViewMode(window.matchMedia('(max-width: 900px)').matches ? 'pdf' : 'split') }} />}
+              }} paperFiles={navigationFiles} referenceIndex={referenceIndex} manageReferences={() => setReferencesOpen(true)} fileActions={fileActions} key={selected.id} fileId={selected.id} memory={editorMemory} value={draft} onChange={setDraft} readOnly={!editable || busy || !!serverFiles.find(file => file.id === selected.id)?.shared_epoch || activeDocument?.remote === null} onSave={save} jump={editorJump} preferences={textPreferences} setPreferences={updatePreferences} quickSwitch={() => setQuickSwitch(true)} reopen={reopenTab} compile={() => void recompile()} canFindPdf={!!output && !stale} findPdf={text => { if (!text || !output || stale) return; setPdfSearchRequest(previous => ({ text, token: (previous?.token ?? 0) + 1 })); setFocus(null); setViewMode(window.matchMedia('(max-width: 900px)').matches ? 'pdf' : 'split') }} />}
               <div className="editor-footer"><span>{draft.split('\n').length} lines · UTF-8</span>{selected?.kind === 'text' && <span title="Approximate count for this file; excludes common math, commands and comments. Not a publisher word count.">~{wordCount} words (this file)</span>}<span>Ctrl/Cmd + S to save</span></div>
             </section>
             <div className="panel-resizer" role="separator" tabIndex={0} aria-label="Resize source and preview" aria-orientation="vertical" aria-valuemin={25} aria-valuemax={75} aria-valuenow={split}
@@ -450,6 +453,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       </>}
     </>}
     {blocker.state === 'blocked' && <LeaveDialog busy={busy || saving} stay={() => blocker.reset()} leave={() => blocker.proceed()} />}
+    {liveWriting && selected && <Suspense fallback={<p role="status">Opening live writing…</p>}><SharedWriting file={{ ...selected, shared_epoch: serverFiles.find(file => file.id === selected.id)?.shared_epoch }} projectId={projectId} userId={userId} owner={access === 'owner'} close={() => { setLiveWriting(false); void reload() }} /></Suspense>}
       {exportSnapshot && <Suspense fallback={<p role="status" className="export-loading">Opening export...</p>}><ExportDialog snapshot={exportSnapshot} close={() => setExportSnapshot(null)} /></Suspense>}
       {quickSwitch && project && <QuickFileSwitch files={navigationFiles} choose={id => { const file = files.find(item => item.id === id); if (file) choose(file) }} close={() => setQuickSwitch(false)} />}
       {replacementRequest && project && <Suspense fallback={<p role="status">Opening replacement preview...</p>}><ReplaceProjectDialog projectId={projectId} {...replacementRequest} blocked={replaceBlocked} close={() => setReplacementRequest(null)} onBusy={value => { inFlight.current = value; setBusy(value) }} applied={async () => { const loaded = await loadPaperState(projectId); setFiles(loaded.files); setSettings(loaded.settings); setStatus('Project replacements saved. Recompile to update the PDF.') }} /></Suspense>}

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { AuthContext } from './auth-context'
 import type { AuthState } from './auth-context'
 import { allowUserRecovery, clearUserRecovery } from '../paper/draft-storage'
+import { clearSharedRecovery } from '../paper/shared-storage'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ user: null, loading: !!supabase, error: null })
@@ -13,7 +14,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let changed = false
     let previousUser: string | undefined
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (previousUser && previousUser !== session?.user.id) void clearUserRecovery(previousUser).catch(() => {})
+      if (previousUser && previousUser !== session?.user.id) { void clearUserRecovery(previousUser).catch(() => {}); void clearSharedRecovery(previousUser).catch(() => {}) }
       previousUser = session?.user.id
       if (previousUser) allowUserRecovery(previousUser)
       changed = true

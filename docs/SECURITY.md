@@ -1,5 +1,45 @@
 # Security requirements
 
+## Live-writing recovery and enrollment
+
+Owner-only socket enrollment checks the displayed source version before seeding;
+SQL authorization and epoch/CAS fencing remain authoritative. End is owner-only.
+Discovery exposes only authorized file IDs/epochs, never raw CRDT state. Browser
+recovery is account/project/file scoped with a Web Lock; account changes purge it.
+No silent merge after reload or epoch change. Pending work blocks deliberate sign-out;
+storage failures require download. Local browser storage is not an encrypted backup.
+Presence names/colors are derived from verified profiles, client cursor JSON is
+size bounded and invalid relative positions are ignored. Presence is not durable.
+Avatar identities in presence come from authenticated actor IDs. Portraits are
+loaded using the existing membership-checked project-avatar RPC and private signed
+image URLs; client messages cannot choose another user's avatar identity.
+
+## PAPER-13 transport boundary (B1)
+
+The pilot transport now enforces exact origins/path/subprotocol, five-second join
+deadline, real-token checks and same-user token refresh. Fresh authorized reads
+precede every source snapshot, including periodic idle-session permission checks.
+Update commits retain SQL authorization. Close/rejection messages are generic and
+contain no token, manuscript or raw database error. No URL query strings accepted.
+Connection, payload, queue, outbound backlog and per-process user/IP rates are
+bounded. Compression is off. The CLI refuses non-loopback plaintext hosting.
+
+Owner start/end is exposed over sockets with SQL authorization. Allowlist defaults empty. Backend secrets
+belong only in ignored server/coediting/.env.local (never VITE_ variables). Local
+tests do not certify deployed TLS, distributed rate limits or adversarial load.
+Browser offline recovery and lifecycle compatibility remain rollout blockers.
+
+## PAPER-13 session slice
+
+Shared-state table has RLS and no client grants. The session RPC is service-role
+only: its caller passes identity resolved through Auth.getUser, never a user ID
+provided by the browser. SQL rechecks verified membership/status under lock.
+Owner enrollment also requires a server project allowlist. No frontend service key.
+Candidate merges use disposable workers with deadlines and schema/byte limits;
+CAS rejects stale commits and a trigger fences legacy full-file writes.
+The B1 transport above adds origin controls, token refresh/revalidation and outbound
+authorization. Distributed rate limits and adversarial fuzz/soak tests remain required.
+
 ## Coediting proof boundary (PAPER-12)
 
 Development-only fixture scripts must never be exposed as a server. Their HMAC

@@ -8,6 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test:coediting": "node scripts/test-paper-coediting.mjs",
+    "test:shared-sessions": "node scripts/test-shared-sessions.mjs --local",
+    "test:shared-transport": "node scripts/test-shared-transport.mjs --local",
+    "test:shared-editor": "node scripts/test-shared-editor.mjs",
+    "dev:shared-transport": "node --env-file=server/coediting/.env.local server/coediting/start.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -25,7 +29,10 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router": "^8.3.1",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "ws": "^8.22.0",
+    "y-codemirror.next": "^0.3.6",
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -36,12 +43,12 @@
     "eslint": "^10.9.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^17.11.0",
+    "jsdom": "^30.1.1",
     "supabase": "^2.116.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.67.0",
-    "vite": "^8.2.2",
-    "y-codemirror.next": "^0.3.6",
-    "yjs": "^13.6.33"
+    "vite": "^8.2.2"
   }
 }

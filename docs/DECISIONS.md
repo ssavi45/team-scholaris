@@ -1,5 +1,22 @@
 # Architecture and product decisions
 
+## PAPER-13 B1: authorized checkpoint delivery over sockets
+
+Use ws for a separate Node transport; keep the existing browser app unchanged until
+its offline/editor slice is ready. Pilot delivery polls durable authorized state per
+connection, including writes from another gateway, instead of trusting an in-memory
+room broadcast. This favors authorization and cross-instance correctness over low
+latency/bandwidth. Revisit polling cost and distributed quotas before public rollout.
+TLS is required by the CLI outside loopback. No host or deployment was selected.
+
+## PAPER-13 slice A: PostgreSQL checkpoint CAS
+
+For the non-public local slice, persist the full bounded Yjs checkpoint and source
+text atomically. Competing gateways compare sequence and retry merging fresh state;
+no process owns durable authority. This replaces the prototype's local disk write.
+An append-only update log, retained causal rollback archives and network fan-out
+remain later gates/decisions. No transport host or production rollout is selected.
+
 ## PAPER-12: coediting decision gate — 2026-10-01
 
 Status: bounded local proof delivered; production rollout NOT accepted yet.

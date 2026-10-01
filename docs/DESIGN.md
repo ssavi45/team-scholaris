@@ -1,5 +1,22 @@
 # Design system
 
+## Live writing
+
+Keep the project-bar Live writing action content-sized (32px minimum height).
+Center the native dialog with explicit auto margins and viewport gutters. Before
+joining, use a compact 680px dialog; expand to a large writing surface after joining.
+Use compact Close, Start/Join session and End session buttons. Closing the window
+and ending everyone's session remain distinct actions with explanatory tooltips.
+
+Use a dedicated writing dialog for the pilot, opened from the selected source.
+Show explicit sync/read-only/recovery status, Undo/Redo and Download draft. Connected
+coauthors use their existing profile portraits with rings matching their cursor
+color, one avatar per person, including yourself. Keep the same ordering across
+viewers and identify yourself with '(you)' in hover/accessibility labels. Names remain in hover labels and accessible labels;
+initials are a fallback while avatars load. Owner start/end are explicit actions. Recovery asks before
+merging; failed/stale copies remain downloadable. Cursors use relative positions
+with names as well as colors. Ordinary paper tools remain outside the dialog.
+
 ## Simplified Paper files
 
 Lead with Upload files and Import ZIP. Show each path with Rename/Delete actions;
@@ -106,7 +123,10 @@ and touch/keyboard interactions at 375/768/1440px.
 ## PAPER-08: writing controls
 
 Use compact Files/Outline/Search sidebar modes and document tabs with dirty/conflict
-markers. Open/reopen/reveal and editor tools remain small and theme-aware. Keep
+markers. Put the collapse toggle immediately before the Explorer heading, with a
+small left-side reopen control when hidden; keep collapse accessible in other sidebar
+modes. Explorer controls belong with the sidebar rather than the project bar.
+Open/reopen/reveal and editor tools remain small and theme-aware. Keep
 search results labelled by path and line; disclose approximate outline/word counts.
 Quick file switch supports arrows, Enter and Escape. Replacement uses a native
 preview dialog with explicit apply, loading/error/blocked states and changed-source

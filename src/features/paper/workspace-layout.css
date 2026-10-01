@@ -15,6 +15,7 @@ html[data-theme="dark"] .paper-studio { --studio-chrome: #1b2720; --studio-canva
 .paper-project-compact h1 { font-size: 18px; line-height: 1.25; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; }
 .paper-permission { font-size: 10px; padding: 4px 8px; border-radius: 99px; background: var(--accent-light); color: var(--accent); white-space: nowrap; }
 .paper-project-compact .paper-save-state { margin-left: auto; font-size: 11px; }
+.paper-project-compact .paper-live-button { width: auto; flex: 0 0 auto; min-height: 32px; padding: 5px 10px; font-size: 12px; white-space: nowrap; }
 .paper-save-state.needs-attention { border: 1px solid var(--border-control); }
 .paper-layout-controls { display: flex; border-left: 1px solid var(--border-medium); padding-left: 6px; gap: 2px; }
 .paper-collaborators { display: flex; align-items: center; gap: 5px; flex-shrink: 0; color: var(--text-secondary); font-size: 11px; }
@@ -33,6 +34,7 @@ html[data-theme="dark"] .paper-studio { --studio-chrome: #1b2720; --studio-canva
 .paper-studio .paper-files[hidden] { display: none; }
 .paper-pane-title { display: flex; align-items: center; gap: 5px; height: 42px; padding: 4px 10px; flex-shrink: 0; border-bottom: 1px solid var(--border-medium); font-size: 12px; }
 .paper-pane-title > strong { flex: 1; }
+.paper-explorer-rail { width: 40px; flex: 0 0 40px; padding: 5px 3px; border-right: 1px solid var(--border-medium); background: var(--studio-chrome); }
 .paper-add > div { left: 0; right: auto; }
 .paper-file-filter { display: flex; align-items: center; gap: 7px; margin: 10px; border: 1px solid var(--border-medium); border-radius: 5px; padding-left: 8px; color: var(--text-muted); }
 .paper-studio .paper-file-filter input { border: 0; background: transparent; min-width: 0; width: 100%; min-height: 32px; padding: 5px; font-size: 12px; color: var(--text-primary); }

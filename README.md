@@ -21,6 +21,26 @@ and the [single build tracker](task.md).
 
 ## Local setup
 
+### Optional PAPER-13 transport pilot
+
+Live writing is an optional local pilot. The durable-session/socket backend and
+frontend provider can be tested with generated fixtures after applying local migrations:
+`npm run test:shared-sessions` and `npm run test:shared-transport`.
+
+For backend development, copy [the server example](server/coediting/.env.example)
+to `server/coediting/.env.local`, configure backend-only credentials and explicit
+allowed origins/project IDs, then run `npm run dev:shared-transport`. Set frontend
+`VITE_PAPER_SHARED_URL=ws://127.0.0.1:5440/paper-shared` and refresh Vite. Select a
+source file, choose Live writing, and have the owner start its shared session.
+Others can connect to the same file. Close live writing to compile saved text;
+end the shared session before renaming/deleting/restoring files. Empty allowlist
+denies all project access. The default listener is loopback port 5440; remote binding requires TLS
+certificate/key paths. No secrets belong in Vite configuration. The protocol is
+documented in [Architecture](docs/ARCHITECTURE.md). The transport uses
+[ws](https://github.com/websockets/ws/blob/master/doc/ws.md).
+
+### Application setup
+
 Use Node.js 24 and npm with the committed lockfile, plus Docker Desktop for
 local Supabase. Run commands from the repository root.
 

@@ -3,7 +3,7 @@ import type { Database } from '../../types/database'
 import type { SourceFile } from './compiler'
 import { imageType, imageDimensions, validateTree, type TreeEntry } from './file-tree'
 
-export type PaperFile = Omit<Database['public']['Tables']['paper_files']['Row'], 'kind'> & { kind: 'text' | 'folder' | 'image' }
+export type PaperFile = Omit<Database['public']['Tables']['paper_files']['Row'], 'kind'> & { kind: 'text' | 'folder' | 'image'; shared_epoch?: string }
 function client() {
   if (!supabase) throw new Error('Supabase is not configured.')
   return supabase
@@ -13,7 +13,9 @@ export async function loadPaper(projectId: string, signal?: AbortSignal) {
   if (signal) query = query.abortSignal(signal)
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data as PaperFile[]
+  const shared = await client().rpc('list_shared_paper_files', { p_project: projectId })
+  if (shared.error) throw new Error('Unable to check shared editing sessions. Apply the current database migrations and retry.')
+  return (data as PaperFile[]).map(file => ({ ...file, shared_epoch: shared.data.find(item => item.file_id === file.id)?.epoch }))
 }
 export async function initializePaper(projectId: string) {
   const { error } = await client().rpc('initialize_paper', { p_project_id: projectId })

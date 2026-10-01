@@ -59,6 +59,12 @@ export type Database = {
           },
         ]
       }
+      paper_shared_documents: {
+        Row: { file_id: string; epoch: string; sequence: number; state: string; updated_at: string }
+        Insert: { file_id: string; epoch?: string; sequence?: number; state: string; updated_at?: string }
+        Update: { file_id?: string; epoch?: string; sequence?: number; state?: string; updated_at?: string }
+        Relationships: [{ foreignKeyName: "paper_shared_documents_file_id_fkey"; columns: ["file_id"]; isOneToOne: true; referencedRelation: "paper_files"; referencedColumns: ["id"] }]
+      }
       paper_workspaces: {
         Row: {
           created_at: string
@@ -448,6 +454,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      list_shared_paper_files: { Args: { p_project: string }; Returns: { file_id: string; epoch: string }[] }
+      paper_shared_session: {
+        Args: { p_actor: string; p_file: string; p_action: string; p_epoch?: string;
+          p_sequence?: number; p_state?: string; p_content?: string; p_version?: number }
+        Returns: Json
+      }
       get_project_avatars: {
         Args: { p_project_id: string }
         Returns: { user_id: string; avatar_preset: number; avatar_path: string | null }[]
