@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import type { SharedRecovery } from './shared-storage'
+import type { SharedCut } from './paper-snapshot'
 export type Peer = { id: string; userId: string; name: string; color: string; cursor: { anchor: Y.RelativePosition; head: Y.RelativePosition } | null }
 type Storage = { load: () => Promise<SharedRecovery | undefined>; save: (record: SharedRecovery | null) => Promise<void> }
 export const encode = (bytes: Uint8Array) => { let text = ''; for (const byte of bytes) text += String.fromCharCode(byte); return btoa(text) }
@@ -7,6 +8,8 @@ export const decode = (text: string) => Uint8Array.from(atob(text), char => char
 export class SharedClient {
   doc = new Y.Doc()
   epoch = ''
+  sequence = 0
+  path = ''
   status = 'Connecting…'
   ready = false
   editable = false
@@ -16,6 +19,8 @@ export class SharedClient {
   blocked = false
   socket?: WebSocket
   private closed = false
+  private queued = 0
+  private acknowledged = 0
   private timer?: ReturnType<typeof setTimeout>
   private retry?: ReturnType<typeof setTimeout>
   private acknowledgement?: ReturnType<typeof setTimeout>
@@ -29,6 +34,7 @@ export class SharedClient {
     this.doc.on('update', (update: Uint8Array, origin: unknown) => {
       if (origin === 'remote' || origin === 'recovery') return
       this.pending.push(encode(update))
+      this.queued++
       if (this.pending.length > 2000) { this.blocked = true; this.status = 'Offline draft limit reached. Download your draft.' }
       else this.status = this.socket?.readyState === 1 ? 'Syncing…' : 'Saving local recovery…'
       this.persist(); this.changed(); this.schedule()
@@ -61,6 +67,8 @@ export class SharedClient {
       if (message.type === 'state') {
         if (this.epoch && this.epoch !== message.epoch) { this.blocked = true; this.status = 'Session changed. Download your draft.'; this.changed(); return }
         this.epoch = message.epoch
+        this.path = message.path ?? this.path
+        this.sequence = Math.max(this.sequence, message.sequence)
         Y.applyUpdate(this.doc, decode(message.state), 'remote')
         this.editable = message.editable
         this.ready = true
@@ -70,6 +78,8 @@ export class SharedClient {
         this.changed(); this.schedule()
       } else if (message.type === 'ack' && this.batch && message.id === this.batch.id && message.epoch === this.epoch) {
         clearTimeout(this.acknowledgement)
+        this.sequence = Math.max(this.sequence, message.sequence)
+        this.acknowledged += this.batch.count
         this.pending.splice(0, this.batch.count); this.batch = undefined; this.persist()
         this.status = this.pending.length ? 'Syncing…' : 'Saved'; this.changed(); this.schedule()
       } else if (message.type === 'rejected') {
@@ -90,18 +100,57 @@ export class SharedClient {
   restore() {
     if (!this.recovery || !this.editable || this.recovery.epoch !== this.epoch) return
     Y.applyUpdate(this.doc, decode(this.recovery.state), 'recovery')
+    this.queued += this.recovery.pending.length
     this.pending.push(...this.recovery.pending); this.recovery = undefined; this.persist(); this.status = 'Syncing recovered edits…'; this.changed(); this.schedule()
   }
   discard() { this.recovery = undefined; this.persist(); this.status = this.editable ? 'Saved' : 'Read-only'; this.changed() }
   private schedule() { clearTimeout(this.timer); this.timer = setTimeout(() => { void this.flush() }, 600) }
   async flush() {
-    await this.writes
+    // Edits can arrive during a storage write; send only once every current edit
+    // has a completed recovery copy.
+    let writes: Promise<void>
+    do { writes = this.writes; await writes } while (writes !== this.writes)
     if (this.closed || this.blocked || this.recovery || !this.editable || this.batch || !this.pending.length || this.socket?.readyState !== 1) return
     const update = Y.mergeUpdates(this.pending.map(decode))
     if (update.byteLength > 262144) { this.blocked = true; this.status = 'Draft exceeds sync limit. Download it before leaving.'; this.changed(); return }
     this.batch = { id: crypto.randomUUID(), count: this.pending.length }
     this.socket.send(JSON.stringify({ type: 'update', id: this.batch.id, epoch: this.epoch, update: encode(update) }))
     this.acknowledgement = setTimeout(() => { this.batch = undefined; this.schedule() }, 10000)
+  }
+  acknowledgedCut(signal: AbortSignal): Promise<SharedCut> {
+    return this.waitForCut(signal, this.queued, this.epoch)
+  }
+  snapshotBarrier() {
+    // Wait for edits already queued at the click, not for all future keystrokes.
+    const target = this.queued, epoch = this.epoch
+    return (signal: AbortSignal) => this.waitForCut(signal, target, epoch)
+  }
+  private waitForCut(signal: AbortSignal, target: number, epoch: string): Promise<SharedCut> {
+    return new Promise((resolve, reject) => {
+      let unsubscribe = () => {}
+      let finished = false
+      const finish = (error?: Error) => {
+        if (finished) return
+        finished = true
+        clearTimeout(timeout); unsubscribe(); signal.removeEventListener('abort', aborted)
+        if (error) reject(error)
+        else resolve({ fileId: this.options.file, epoch, sequence: this.sequence })
+      }
+      const aborted = () => finish(new DOMException('Snapshot cancelled.', 'AbortError'))
+      const timeout = setTimeout(() => finish(new Error('Edits are still synchronizing. Retry when connected; your draft is retained.')), 20000)
+      const check = () => {
+        if (signal.aborted) { aborted(); return }
+        if (this.closed || this.blocked || !this.ready || this.epoch !== epoch || this.recovery || this.socket?.readyState !== 1) {
+          finish(new Error('Connect and resolve recovery before capturing a saved paper.')); return
+        }
+        if (!this.editable && this.acknowledged < target) { finish(new Error('Unsent edits are read-only. Download your draft.')); return }
+        if (this.acknowledged >= target) finish()
+        else void this.flush()
+      }
+      unsubscribe = this.subscribe(check)
+      signal.addEventListener('abort', aborted, { once: true })
+      check()
+    })
   }
   cursor(anchor: number, head: number) {
     if (this.socket?.readyState !== 1 || !this.ready || this.blocked) return
@@ -112,5 +161,5 @@ export class SharedClient {
   }
   async refresh() { const token = await this.options.token(); if (this.socket?.readyState === 1) this.socket.send(JSON.stringify({ type: 'refresh', token })) }
   end() { if (!this.pending.length && !this.recovery && this.socket?.readyState === 1) this.socket.send(JSON.stringify({ type: 'end' })) }
-  close() { if (this.closed) return this.writes; this.closed = true; clearTimeout(this.timer); clearTimeout(this.retry); clearTimeout(this.acknowledgement); this.socket?.close(); this.peers = []; return this.writes.finally(() => this.doc.destroy()) }
+  close() { if (this.closed) return this.writes; this.closed = true; clearTimeout(this.timer); clearTimeout(this.retry); clearTimeout(this.acknowledgement); this.socket?.close(); this.peers = []; this.changed(); return this.writes.finally(() => this.doc.destroy()) }
 }

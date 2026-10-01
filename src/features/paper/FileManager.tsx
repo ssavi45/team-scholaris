@@ -89,9 +89,11 @@ export default function FileManager({ initialPath = '', initialKind, projectId, 
   async function save() {
     if (working.current) return
     try { validateTree(entries, main) } catch (cause) { setError(cause instanceof Error ? cause.message : 'Invalid tree.'); return }
+    const ending = files.filter(file => file.shared_epoch && !entries.some(entry => entry.id === file.id && entry.kind === 'text' && entry.content === file.content))
+    if (ending.length && !window.confirm(`Replace or delete ${ending.length} live file(s)? Their sessions will end for everyone. Saved work and shared state are preserved in history. Ask coauthors to download unsent drafts first. Only the owner can confirm this change.`)) return
     working.current = true; setBusy(true); onBusy(true); setError(''); setMessage('Uploading figures and applying changes...')
     try {
-      await applyPaperTree(projectId, settings.revision, entries, main)
+      await applyPaperTree(projectId, settings.revision, entries, main, ending.length > 0)
       const kept = new Set(entries.filter((entry) => !entry.bytes).map((entry) => entry.storage_path))
       const cleaned = await cleanupFigures(files.map((file) => file.storage_path).filter((path): path is string => !!path && !kept.has(path)))
       applied(cleaned ? undefined : 'File changes were saved, but cleanup of unused figures could not be confirmed.')

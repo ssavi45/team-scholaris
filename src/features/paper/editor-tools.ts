@@ -1,13 +1,31 @@
 export type TextSource = { id: string; path: string; kind: string; content: string }
 export type SourceLocation = { fileId: string; path: string; line: number; from: number; to: number }
 export type SearchHit = SourceLocation & { excerpt: string }
+export type OutlineHeading = SourceLocation & { title: string; level: number }
+export type OutlineNode = OutlineHeading & { id: string; children: OutlineNode[] }
+
+export function nestOutline(headings: OutlineHeading[]): OutlineNode[] {
+  const roots: OutlineNode[] = [], parents: OutlineNode[] = []
+  const occurrences = new Map<string, number>()
+  for (const heading of headings) {
+    const identity = JSON.stringify([heading.fileId, heading.level, heading.title])
+    const occurrence = occurrences.get(identity) ?? 0
+    occurrences.set(identity, occurrence + 1)
+    const node: OutlineNode = { ...heading, id: `${identity}:${occurrence}`, children: [] }
+    while (parents.length && parents[parents.length - 1].level >= heading.level) parents.pop()
+    if (parents.length) parents[parents.length - 1].children.push(node)
+    else roots.push(node)
+    parents.push(node)
+  }
+  return roots
+}
 const blanks = (text: string) => text.replace(/[^\n]/g, ' ')
 export function maskNonProse(text: string) {
   return text.replace(/\\begin\{(verbatim\*?|lstlisting|minted|comment)\}[\s\S]*?\\end\{\1\}/g, blanks)
     .replace(/\\verb\*?([^\w\s])[^\n]*?\1/g, blanks).replace(/(?<!\\)(?:\\\\)*%.*/g, blanks)
 }
 export function buildOutline(files: TextSource[], main: string) {
-  const headings: (SourceLocation & { title: string; level: number })[] = []
+  const headings: OutlineHeading[] = []
   const visited = new Set<string>(), unresolved = new Set<string>()
   const levels = ['part', 'chapter', 'section', 'subsection', 'subsubsection', 'paragraph', 'subparagraph']
   function visit(path: string) {

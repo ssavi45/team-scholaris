@@ -1,5 +1,84 @@
 # Project memory
 
+## Paper sidebar simplification - 2026-10-02
+
+Removed the Files/Outline/Search mode row and project-wide search/replacement UI
+at user request. Sidebar opens directly to Explorer over the resizable/collapsible
+outline. Filename filtering, quick file switch and current-file Find & replace
+remain. Removed ordinary PDF-to-project-search action; live current-file lookup
+remains and its missing-match message points to Find & replace.
+Earlier sidebar/search delivery notes below describe historical behavior.
+Build, lint, existing editor helper regression and whitespace checks passed.
+Existing bundle-size warning remains; visual acceptance remains pending.
+
+## PAPER-13 completed implementation for local pilot - 2026-10-02
+
+Completed coordinated rename/delete/replace/restore, causal history retention,
+cross-gateway expiring presence, shared per-actor rate budgets and optional avatar
+cursor following. Live History reuses the existing comparison/checkpoint UI.
+Renames preserve file ID, epoch and state; owner-confirmed destructive actions
+capture safety history and end affected sessions. Unchanged unrelated sessions
+survive. Restoring never merges old causal updates: explicitly start a new epoch.
+Causal archives are private, charged to the existing 50 MiB history quota and
+removed with their retained history checkpoint. Old autosave/manifest paths stay fenced.
+
+Atomic read_paper_state avoids mixed file/revision/session reads during typing.
+Live rename updates the dialog/download name without rebuilding CodeMirror. Role
+changes no longer recreate its connection. Stale owner reconnect cannot reenroll
+an ended session; rejected local recovery remains downloadable.
+
+Migrations 006/007/008 and 20261002000100 applied locally without reset. Local gateway restarted as
+PID 26588 on port 5440 with the existing explicit project allowlist. No hosted
+migration/deployment or automatic enrollment of real papers was performed.
+Authenticated lifecycle/retention/permission tests passed; five writers completed
+50 concurrent edits. Actual child gateways were killed before commit and after
+commit/before ACK: restart/retry preserved every edit exactly once. Existing
+session, socket, editor and saved-snapshot regressions passed. Final build/lint
+passed, including diff/untracked-file whitespace checks; existing Vite bundle warning remains.
+
+Stale manifest/restore/checkpoint previews now return immediate HTTP 409 (PT409)
+instead of treating a fixed stale revision as a database serialization failure.
+A focused authenticated regression verifies all three conflict responses, no
+mutation on failure and successful current checkpoint/restore.
+
+No connected browser (browser list empty). Visual/keyboard/mobile/IME and hosted
+WSS/operational acceptance remain release checks, not completed tests. Implementation
+is complete for the local controlled pilot; PAPER-14 is not started automatically.
+
+## PAPER-13 D1: compile/export during live writing - 2026-10-01
+
+Live writing now has Recompile, continuous PDF preview, Export and readable Log,
+with hide/expand controls preserving the mounted editor/session. Snapshot capture
+waits for local edits queued at the click to be durably acknowledged, then reads
+files/main/revision together under the project lock. Later typing keeps going.
+Brief figure leases protect eager hydration; revoked users gain no extra access.
+Successful builds retain exact source/figure bytes and identify their revision.
+Export offers current captured source and, when different, the PDF's matching source.
+Unsent drafts on other devices remain outside saved snapshots.
+
+Migration 20261001000500 applied locally without reset; hosted rollout not performed.
+Passed: saved-cut and preparation regressions, authenticated concurrent snapshot/
+asset/RLS tests, real WebSocket regression, CodeMirror own-author undo, compiler
+session integration, ZIP export and diagnostics tests. Final production build, lint
+and diff whitespace passed; existing bundle-size warning remains. Browser skill
+found no connected browser; visual,
+mobile and IME acceptance remain manual. No real paper was edited by fixtures.
+Remaining PAPER-13: coordinated lifecycle/history, retained causal rollback archives,
+crash/load/cross-gateway presence and production deployment gates. Do not begin
+PAPER-14 automatically.
+
+## Stacked files and document outline - 2026-10-01
+
+Removed the redundant compilation-entry filename footer between files and outline.
+
+Files sidebar now contains the explorer above a hierarchical document outline.
+Independent scrolling, draggable/keyboard divider, branch/panel collapse and source
+navigation preserve included-file locations. Outline-only and project search modes
+remain available. Uses existing draft-aware parser; literal-heading limitations
+remain disclosed. Light/dark styling uses Scholaris tokens; visual acceptance pending.
+Nested/include/identity regressions, build, lint and whitespace checks passed.
+No connected browser was available for visual verification.
+
 ## Explorer toggle placement - 2026-10-01
 
 Moved collapse control from the project bar to the left of the Explorer heading,
@@ -49,7 +128,7 @@ Migration 20261001000400 is applied locally. Hosted environments need migration.
 User-selected project is configured in ignored local frontend/backend env files.
 Loopback gateway runs on port 5440. No real file was enrolled or edited by the agent.
 Use Live writing in the project, then owner starts a file's session. End it before
-rename/delete/restore. Close dialog before compiling/exporting acknowledged text.
+rename/delete/restore. The later D1 slice adds compile/export inside the dialog.
 
 Tests passed: real socket provider + IndexedDB offline/reload/explicit recovery,
 named relative cursors, account cleanup; actual CodeMirror DOM concurrent binding
@@ -591,8 +670,9 @@ as alternative instructions.
    frontend flag alone cannot configure either backend integration.
 5. Original viewer-chat permissions conflict with current read-only behavior.
    Current implementation is preserved; confirm the beta policy explicitly.
-6. Realtime paper coediting is not implemented. Current optimistic version checks
-   protect explicit saves but do not merge concurrent authors' edits.
+6. Realtime coediting is implemented for the local allowlisted pilot. Full shared
+   lifecycle/history and production release acceptance remain open; ordinary files
+   still use optimistic version checks rather than merged writes.
 7. Storage cleanup can leave unreferenced binaries after interrupted deletion.
    Retention/purge automation and production recovery procedures need future work.
 8. A prior Vite build reported a non-blocking bundle-size warning. Production

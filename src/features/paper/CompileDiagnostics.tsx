@@ -3,10 +3,11 @@ import { AlertTriangle, CheckCircle2, CircleAlert, ChevronDown, FileCode2, X } f
 import { describeCompileIssue, type CompileIssue } from './compile-diagnostics'
 import './compile-diagnostics.css'
 
-export function CompileDiagnostics({ issues, log, status, outcome, compiling, stale, jump, summary, close }: {
+export function CompileDiagnostics({ issues, log, status, outcome, compiling, stale, jump, summary, close, canJump }: {
   issues: CompileIssue[]; log: string; status: string; stale: boolean;
   outcome: 'idle' | 'success' | 'failed' | 'cancelled'; compiling: boolean;
   jump: (issue: CompileIssue) => void; summary: string; close: () => void;
+  canJump?: (issue: CompileIssue) => boolean;
 }) {
   const [tab, setTab] = useState<'issues' | 'log'>('issues')
   const errors = issues.filter(issue => issue.severity === 'error')
@@ -34,7 +35,7 @@ export function CompileDiagnostics({ issues, log, status, outcome, compiling, st
           return <details className={'diagnostic-item ' + issue.severity} key={index + ':' + issue.message}>
             <summary><IssueIcon size={15} aria-hidden="true" /><span className="diagnostic-item-title">{readable.title}</span><span className="diagnostic-location">{issue.file && issue.line ? issue.file + ':' + issue.line : 'Location unavailable'}</span><ChevronDown className="diagnostic-chevron" size={14} aria-hidden="true" /><span className="sr-only">{issue.severity}</span></summary>
             <div className="diagnostic-item-body"><p>{readable.explanation}</p>
-              {issue.file && issue.line && <button className="diagnostic-source" disabled={stale || compiling} onClick={() => jump(issue)}><FileCode2 size={14} />Open {issue.file}, line {issue.line}</button>}
+              {issue.file && issue.line && <button className="diagnostic-source" title={canJump && !canJump(issue) ? 'Open this file from the workspace explorer to review it.' : undefined} disabled={stale || compiling || (canJump && !canJump(issue))} onClick={() => jump(issue)}><FileCode2 size={14} />Open {issue.file}, line {issue.line}</button>}
               <details className="diagnostic-technical"><summary>Technical details{issue.count > 1 ? ' · reported ' + issue.count + ' times' : ''}</summary><pre>{issue.message}{issue.context && '\n\nLog context:\n' + issue.context}</pre></details>
             </div>
           </details>

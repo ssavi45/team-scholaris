@@ -22,12 +22,12 @@ export async function getHistory(projectId: string, id: number, signal?: AbortSi
   return data as unknown as HistorySnapshot
 }
 export async function checkpoint(projectId: string, revision: number, label: string) {
-  const { data, error } = await client().rpc('create_paper_checkpoint', { p_project_id: projectId, p_revision: revision, p_label: label })
+  const { data, error } = await client().rpc('create_shared_paper_checkpoint', { p_project_id: projectId, p_revision: revision, p_label: label })
   if (error) throw new Error(error.message)
   return data
 }
-export async function restoreHistory(projectId: string, snapshot: number, revision: number, fileId?: string) {
-  const { data, error } = await client().rpc('restore_paper_history', { p_project_id: projectId, p_history_id: snapshot, p_revision: revision, p_file_id: fileId })
+export async function restoreHistory(projectId: string, snapshot: number, revision: number, fileId?: string, confirmShared = false) {
+  const { data, error } = await client().rpc('restore_shared_paper_history', { p_project_id: projectId, p_history_id: snapshot, p_revision: revision, p_file_id: fileId, p_confirm_shared: confirmShared })
   if (error) throw new Error(error.message)
   return data
 }

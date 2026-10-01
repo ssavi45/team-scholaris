@@ -13,7 +13,7 @@ type Model = { id: number; pdf: PDFDocumentProxy; source: Uint8Array<ArrayBuffer
 export type PdfSearchRequest = { text: string; token: number }
 export function PdfPreview({ data, fullscreen, onFullscreen, stale, searchRequest, findSource }: {
   data: Uint8Array<ArrayBuffer>; fullscreen: boolean; onFullscreen: () => void; stale: boolean;
-  searchRequest: PdfSearchRequest | null; findSource: (text: string) => void;
+  searchRequest: PdfSearchRequest | null; findSource?: (text: string) => void;
 }) {
   const generation = useRef(0)
   const [loaded, setLoaded] = useState<Model | null>(null)
@@ -177,7 +177,7 @@ export function PdfPreview({ data, fullscreen, onFullscreen, stale, searchReques
         <div className="pdf-document-stack" style={{ height: totalHeight, width: totalWidth }}>{pdf && visible.map(index => { const row = rows[index]; return <section key={`${model?.id}:${index}:${scale}:${rotation}`} className="pdf-continuous-page" aria-label={`Page ${index + 1}`} style={{ top: row.top, left: Math.max(16, (totalWidth - row.width) / 2), width: row.width, height: row.height }}><PdfPageSurface pdf={pdf} number={index + 1} scale={scale} rotation={rotation} hit={hit?.page === index + 1 ? hit : undefined} revealMatch={node => { const target = pendingMatch.current; if (!target || target.page !== index + 1 || target !== hit) return; pendingMatch.current = null; const scroller = viewport.current; if (scroller) scroller.scrollTop += node.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 70 }} navigate={destination => void navigate(destination)} /></section> })}</div>
       </div>
     </div>
-    <div className="pdf-reading-status"><span>Continuous scroll · Page {page}</span><button className="tool-button" disabled={stale || !selection} title={stale ? 'Recompile before looking up source text' : 'Select PDF text, then search current source; not exact SyncTeX mapping'} onClick={() => findSource(selection)}>Find selection in source</button>{stale && <span>Outdated PDF</span>}</div>
+    <div className="pdf-reading-status"><span>Continuous scroll · Page {page}</span>{findSource && <button className="tool-button" disabled={stale || !selection} title={stale ? 'Recompile before looking up source text' : 'Select PDF text, then search current source; not exact SyncTeX mapping'} onClick={() => findSource(selection)}>Find selection in source</button>}{stale && <span>Outdated PDF</span>}</div>
     <details className="pdf-text"><summary>Page {page} text alternative</summary><p>{text?.source === data && text.page === page ? text.value || 'No text on this page.' : 'Loading page text…'}</p></details>
   </div>
 }

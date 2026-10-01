@@ -1,5 +1,68 @@
 # Test plan
 
+## PAPER-13 lifecycle completion
+
+Run `node scripts/test-shared-conflicts.mjs --local` for immediate HTTP 409 on stale
+manifest/restore/checkpoint previews, no mutation on conflict and current success.
+
+Run `node scripts/test-shared-lifecycle.mjs --local`: creates disposable real Auth
+accounts and a generated project only. Covers member rename/identity preservation,
+owner-only replacement/deletion/restore, unrelated session preservation, source/causal
+checkpoint agreement and quota accounting, private archive denial, rejected mutation
+rollback, old epochs, delete-all/restore and archive retention cleanup. Five authors
+perform 50 simultaneous writes plus coherent state reads. Actual child gateways are
+killed before commit and after durable commit/before ACK; new processes retry without
+duplicating text. Credentials travel only through IPC, not command arguments/logs.
+Service instances test cross-gateway presence, expiry, revocation and shared budgets.
+The transport suite additionally checks actual cross-gateway cursor messages and
+stale-owner reconnect/rejected recovery cannot restart an ended session.
+
+Repeat authenticated session/socket, real CodeMirror own-author undo, saved snapshots,
+production build and lint checks after changes. These local generated-paper checks
+are not a representative production load soak or real-browser/IME acceptance.
+
+Manual release checklist: two/five real accounts edit together; follow an avatar,
+move your cursor to stop, rename while connected, restore/delete as owner with
+other users offline, recover rejected drafts separately, demote/revoke/archive,
+restart the gateway and compare downloaded source/PDF/checkpoint revisions. Check
+keyboard focus/Close/Escape in nested History/Export, theme contrast, narrow/mobile
+screens, IME and same-account multi-tab lock. Validate hosted WSS certificate/origin,
+budgets and operational ownership before broadening the project allowlist.
+No connected browser was available for this implementation acceptance.
+
+## Live saved compile/export snapshots
+
+- `node scripts/test-shared-snapshot.mjs`: real client barrier waits for ACK, permits
+  later typing, rejects offline/cancellation and retains local pending updates.
+- `node scripts/test-paper-snapshot-preparation.mjs`: actual snapshot API/compiler
+  orchestration with controlled adapters; frozen main/revision, matching source ZIP,
+  stale detection, warm engine reuse and lease cleanup on failure/cancel/expiry.
+- `node scripts/test-paper-snapshots.mjs --local`: disposable real Auth/project
+  fixtures, concurrent multi-file saves/captures, revision/version/CRDT agreement,
+  epoch/minimum ACK fencing, viewer/archive reads, outsider/revocation denial,
+  leased figure deletion prevention and caller-scoped release.
+- Retest existing real socket, CodeMirror, compiler-session, export and diagnostics
+  scripts. Build/lint/whitespace remain required.
+
+Manual: two accounts keep typing during Recompile and Export; compare displayed
+revision and downloaded sources/PDF, then edit again and check outdated status.
+Hide/expand PDF without losing selection/session; cancel/fail a build, view log and
+jump unchanged live-file locations; export during an in-flight build. Check nested
+Export dialog Close/Escape returns focus to Live writing; offline recovery must
+block saved capture while Download draft works. Check narrow screens and both themes.
+No connected browser was available in the D1 build; these visual checks are pending.
+
+## Stacked Paper outline
+
+Run `node scripts/test-paper-editor.mjs` for nested/skipped heading levels,
+included-file locations, repeated heading identities and draft offset stability.
+Manual: files and outline visible together; scroll each independently, resize the
+divider with pointer or Up/Down keys, collapse/reopen branches and the whole panel,
+navigate included-file headings. Verify the mode row is absent; Explorer filename
+filtering and current-editor Find & replace remain available. Verify both themes,
+narrow viewport, empty outline and unresolved includes. These are source headings,
+not a compiled PDF table of contents or evaluated TeX macros.
+
 ## Live-writing client and editor
 
 `npm run test:shared-transport` now runs the actual frontend SharedClient with real
@@ -217,7 +280,9 @@ Manual (pending; no browser connected during implementation):
 - Repeat zoom, fit, rotation, resize and focus; text-selection alignment stays accurate.
 - Select/copy a phrase, navigate multiple search matches, follow a citation/external link.
 - Inspect bookmarks and earlier/later thumbnails; direct page entry uses Enter.
-- Use source/PDF text lookup; edit source and confirm stale lookup is disabled.
+- Use source-to-PDF text lookup; in Live writing, use PDF-to-current-file lookup.
+  Edit source and confirm stale lookup is disabled. Ordinary PDF viewer must not
+  expose the removed project-search action.
 - In a long paper, verify at most 12 main canvases plus five thumbnail canvases;
   scroll away and confirm old bitmap memory is released (worker memory is separate).
 - Check 375/768/1440px, both themes, keyboard focus and accessible text alternative.
@@ -234,13 +299,13 @@ preferences, snippet selection/undo and read-only behavior. Also run draft/expor
 regressions and local rollback-only history safeguards; lint/build/diff checks.
 
 Manual acceptance (pending):
-- At 375/768/1440px in both themes, navigate Files/Outline/Search without clipping.
+- At 375/768/1440px in both themes, use the stacked Explorer/outline without clipping.
+- Files/Outline/Search row and project-search panel must be absent. Filename filtering
+  and editor Ctrl/Cmd+F must remain usable.
 - Ctrl/Cmd+P, arrows, Enter: open a chapter; Ctrl/Cmd+G: jump to a line.
 - Close/reopen tabs, change theme and revisit files: cursor, scroll and undo survive.
-- Search unsaved drafts; select results and confirm exact text is highlighted.
-- Preview replacement across two saved files, inspect changes, apply and recompile.
-- Modify source in another session after preview: apply must reject the stale revision.
-- Dirty/conflicted/offline/viewer/archived state must not allow replacement apply.
+- Find/replace in the current editor, including local edits; confirm read-only
+  state cannot replace text. Project-wide search/replacement is no longer exposed.
 - Try snippets, completion, comment, undo, local replace and Ctrl/Cmd+Enter compile.
 - Reload preferences; check user isolation and small-screen default single-pane layout.
 

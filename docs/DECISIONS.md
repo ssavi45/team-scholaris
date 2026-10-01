@@ -1,5 +1,29 @@
 # Architecture and product decisions
 
+## PAPER-13 lifecycle decision - 2026-10-02
+
+Preserve live identity and causal state through unchanged-source renames. Destructive
+file changes require owner consent and a safety checkpoint; restore ends affected
+sessions and seeds a new epoch only on explicit enrollment. Do not reuse old causal
+queues in a restored manuscript. Keep causal checkpoints with source history and
+charge their bytes to the existing retention quota; no unbounded second archive.
+
+Use short private database presence leases and shared per-actor rate counters for
+the pilot's independent gateways. Keep process/IP/queue/payload guards. Optional
+avatar following only scrolls, never changes the local selection. Hosting/provider,
+public rollout and real-browser acceptance remain separate release decisions.
+
+## PAPER-13 D1: short locked saved cuts, transient build artifacts
+
+Use a membership-checked PostgreSQL capture with the same project-first lock as
+source mutations. Wait only for the initiating author's edits queued at the click;
+compile saved materialized text rather than pausing all writers or reading live
+Y.Text midway through a build. Brief asset leases bridge SQL and private Storage;
+eager hydration permits export after later file changes. Keep exact successful
+build sources alongside PDF in workspace memory and reuse the warmed engine.
+No per-keystroke compile, new compiler dependency or durable submission archive.
+Coordinated history/CRDT rollback remains a separate PAPER-13 slice.
+
 ## PAPER-13 B1: authorized checkpoint delivery over sockets
 
 Use ws for a separate Node transport; keep the existing browser app unchanged until
@@ -14,8 +38,8 @@ TLS is required by the CLI outside loopback. No host or deployment was selected.
 For the non-public local slice, persist the full bounded Yjs checkpoint and source
 text atomically. Competing gateways compare sequence and retry merging fresh state;
 no process owns durable authority. This replaces the prototype's local disk write.
-An append-only update log, retained causal rollback archives and network fan-out
-remain later gates/decisions. No transport host or production rollout is selected.
+The initial A slice deferred retained archives and fan-out; later slices above
+now deliver those for the pilot. Full checkpoint CAS remains the durable protocol. No transport host or production rollout is selected.
 
 ## PAPER-12: coediting decision gate — 2026-10-01
 

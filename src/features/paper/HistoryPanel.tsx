@@ -60,8 +60,10 @@ export default function HistoryPanel({ projectId, title, editable, blocked, clos
   async function restore(fileId?: string) {
     if (!snapshot || !base?.settings || !canWrite) return
     if (!window.confirm(`Restore ${fileId ? chosen?.before?.path : 'the entire paper'} from "${snapshot.label}"? A protected checkpoint of the current paper will be created first. This creates a new revision; it does not erase history.`)) return
+    const affected = base.files.filter(file => file.shared_epoch && (!fileId || file.id === fileId))
+    if (affected.length && !window.confirm(`This ends live writing in ${affected.length} file(s). Ask coauthors to download unsent drafts first. Saved text and shared state are retained in the safety checkpoint. The owner must confirm; restored files start new sessions explicitly.`)) return
     await run(async () => {
-      await restoreHistory(projectId, snapshot.id, base.settings!.revision, fileId)
+      await restoreHistory(projectId, snapshot.id, base.settings!.revision, fileId, affected.length > 0)
       await restored()
       await refresh()
       setStatus('Restore completed as a new revision. The previous paper is preserved in a protected safety checkpoint. Recompile to update the PDF.')

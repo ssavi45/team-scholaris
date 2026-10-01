@@ -1,39 +1,42 @@
 # Paper workspace roadmap and build tracker
 
-Last updated: 2026-10-01. **PAPER-13 live-writing UI, offline recovery and named cursors implemented for a local pilot.**
-This is the only task tracker. Current product focus: make Paper the reason a
-research team chooses Scholaris. Previous delivery records remain below.
+Last updated: 2026-10-02. **PAPER-13 implementation complete for the controlled local pilot; release acceptance remains pending.**
+This is the only task tracker. Current focus: make Paper the reason a research team chooses Scholaris.
+
+## Paper sidebar simplification - 2026-10-02
+
+- [x] Remove the highlighted Files/Outline/Search row and project-wide search UI.
+- [x] Keep stacked Explorer/outline, filename filtering, and editor Find & replace.
+- [x] Remove the ordinary PDF action that opened the deleted search panel.
+- [x] Existing editor helper regression passed.
+- [x] Build, lint and whitespace checks passed; existing bundle-size warning remains.
+- [ ] Manual visual acceptance in both themes and narrow panes.
 
 ## PAPER-13 current handoff
 
-- [x] Explorer collapse beside its heading, with sidebar-local reopening and
-  controls available in Files/Outline/Search.
-- [x] All connected-coauthor avatars, including yourself, with matching color rings,
-  stable ordering and hover names; local caret remains unduplicated.
-- [x] Compact Live writing controls and centered responsive session dialog;
-  shorter Close/Start/Join/End labels with distinct action explanations.
-- [x] Slice A: server-only service verifies real Supabase tokens; project allowlist
-  defaults empty. Owner enrollment captures safety history.
-- [x] Durable PostgreSQL state/text transaction, CAS retries across gateways,
-  file identity/epoch, worker validation and legacy mutation fence.
-- [x] Five generated local accounts: concurrent edits, duplicate retry, fresh gateway,
-  invalid updates, stale epochs, demotion/revocation/archive and rollback.
-- [x] Slice B1: real WebSocket transport, origin/connection/payload/per-instance rate
-  limits, verified reconnect/refresh, durable acknowledgements and authorized fan-out.
-  Local five-account/two-gateway socket tests; server supports direct TLS configuration.
-- [x] Slice B2: Live writing dialog with Y.Text binding, own-action undo, account/file
-  IndexedDB queue, explicit reload recovery, download, reconnect and same-browser lock.
-- [x] Slice C: named relative cursors/selections and connected-coauthor list for one gateway.
-- [ ] Optional follow collaborator, cross-gateway presence, visual/IME/mobile acceptance.
-- [ ] Distributed quotas and hosted TLS acceptance remain production gates.
-- [ ] Slice D: coordinated enrollment/lifecycle, retained CRDT rollback archives,
-  immutable multi-file compile/export snapshots; browser/IME/crash/load acceptance.
+- [x] Compact Live writing dialog, connected avatars, relative cursors and optional avatar following.
+- [x] Hierarchical stacked files/outline; explorer-local collapse/reopen controls.
+- [x] Verified, explicitly allowlisted owner enrollment; legacy autosave/manifest fencing.
+- [x] Durable state/text CAS, own-author undo, persisted offline queues and explicit recovery/download.
+- [x] Coherent acknowledged compile/export snapshots with matching source/PDF and protected figures.
+- [x] Coordinated rename/delete/replace/restore; preserve unrelated sessions, fence old epochs.
+- [x] Private causal history checkpoints with bounded retention/quota and safety copies.
+- [x] Atomic file/revision/session reads and History inside Live writing.
+- [x] Immediate stale-preview conflicts for file changes, restore and checkpoints.
+- [x] Cross-gateway expiring presence and shared per-actor operation/cursor budgets.
+- [x] Five-account convergence/load, actual process crash before/after commit, restart/replay,
+  authenticated lifecycle/permission/retention and existing editor/snapshot regressions.
+- [ ] Manual visual/keyboard/mobile/IME checks with two and five real accounts.
+- [ ] Hosted migrations/WSS certificates, operational budget and representative long-running load acceptance.
 
-The requested local project is allowlisted; no real source files were automatically
-enrolled. Select a source > Live writing > Start shared session as owner. Owners
-can End shared session to return to legacy editing. Rename/delete/restore remain
-blocked while enrolled. Close live writing to compile/export saved sources.
-PAPER-13 lifecycle and release acceptance remain in progress.
+Local migrations through 20261002000100 are applied without reset. Local gateway
+PID 26588 runs on port 5440 with the existing requested project's allowlist.
+No real manuscript was automatically enrolled; no hosted rollout occurred.
+Rename keeps live writing connected. Owner-confirmed replace/delete/restore ends
+only affected sessions; saved work and causal state remain in retained history.
+Restore/replacement requires explicit new enrollment; unsent drafts stay separate.
+Recompile, Export and History work inside Live writing. Browser list was empty,
+so the remaining release checks are explicitly unaccepted. Do not start PAPER-14 automatically.
 
 ## Paper file-management delivery
 
@@ -528,17 +531,20 @@ the unchecked authenticated-client gate. Hosting and production acceptance remai
 **User story:** "My coauthor writes Methods while I fix Results; our work survives
 reconnects, and I can tell who is actually here."
 
-- [ ] Ship 12's accepted protocol behind a controlled rollout; migrate existing
+- [x] Ship 12's accepted protocol behind a controlled rollout; migrate existing
   documents without discarding old history or recovery drafts.
-- [ ] Live same-file text updates, actual participant presence/cursors/selections,
+- [x] Live same-file text updates, actual participant presence/cursors/selections,
   accessible coauthor names/avatars and optional follow collaborator mode.
   Show presence timeout/disconnection honestly; do not infer online status from membership.
-- [ ] Local undo affects my own actions, not a teammate's entire latest edit.
+- [x] Local undo affects my own actions, not a teammate's entire latest edit.
   Reconnect reconciles supported offline changes and reports rejected writes.
-- [ ] Enforce revocation/demotion/archive while a session is open; shared file tree
+- [x] Enforce revocation/demotion/archive while a session is open; shared file tree
   updates cannot resurrect deleted files or fork a document silently.
-- [ ] Capture coherent compile/history/export snapshots while editing continues;
+- [x] Capture coherent saved compile/export snapshots while editing continues;
   avoid recompiling once per collaborator keystroke.
+- [x] Coordinate retained history/CRDT restore and lifecycle snapshots.
+
+**Implementation delivered for the local pilot; manual/hosted release checks above remain pending.**
 
 **Acceptance:** Two- and five-account scenarios, conflicting edits, dropped transport,
 server restart, stale tab, renamed/deleted file, member removal and read-only viewer.

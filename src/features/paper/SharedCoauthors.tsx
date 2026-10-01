@@ -4,7 +4,7 @@ import { ProfileAvatar } from '../profile/ProfileAvatar'
 import { useProfile } from '../profile/profile-context'
 import type { Peer } from './shared-client'
 
-export function SharedCoauthors({ projectId, userId, peers }: { projectId: string; userId: string; peers: Peer[] }) {
+export function SharedCoauthors({ projectId, userId, peers, following, follow }: { projectId: string; userId: string; peers: Peer[]; following?: string; follow?: (id: string) => void }) {
   const { profile, imageUrl } = useProfile()
   const [avatars, setAvatars] = useState<Record<string, ChatAvatar>>({})
   // One portrait per person even when they have multiple connected devices.
@@ -33,11 +33,13 @@ export function SharedCoauthors({ projectId, userId, peers }: { projectId: strin
       const avatar = isSelf && profile ? { preset: profile.avatar_preset, imageUrl } : avatars[peer.userId]
       const label = `${peer.name}${isSelf ? ' (you)' : ''}`
       const initials = peer.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || '?'
-      return <span className="shared-coauthor" key={peer.userId || peer.id} tabIndex={0}
-        aria-label={`${label}, connected coauthor`} title={`${label} — connected`}
+      return <button type="button" className="shared-coauthor" key={peer.userId || peer.id}
+        disabled={!follow || isSelf || !peer.cursor} aria-pressed={following === peer.userId}
+        onClick={() => follow?.(peer.userId)}
+        aria-label={`${label}, ${isSelf || !peer.cursor ? 'connected coauthor' : following === peer.userId ? 'stop following' : 'follow cursor'}`} title={`${label} — ${isSelf ? 'you' : following === peer.userId ? 'following; click to stop' : peer.cursor ? 'click to follow cursor' : 'connected; no cursor yet'}`}
         style={{ '--coauthor-color': peer.color } as CSSProperties}>
         {avatar ? <ProfileAvatar preset={avatar.preset} imageUrl={avatar.imageUrl} size={28} /> : <span className="shared-coauthor-initials" aria-hidden="true">{initials}</span>}
-      </span>
+      </button>
     }) : <span className="shared-coauthors-empty">No coauthors connected</span>}
   </div>
 }

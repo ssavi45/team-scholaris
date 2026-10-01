@@ -51,6 +51,5 @@ export function PaperExplorer({ files, selected, mainFile, editable, disabled, c
     <label className="paper-file-filter"><Search size={15} /><span className="sr-only">Filter paper files</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Find a file..." type="search" /></label>
     <div ref={treeRoot} className="paper-tree-scroll">{visible.length ? tree() : <p className="muted">No matching files.</p>}</div>
     {disabled && editable && <p className="paper-explorer-hint">Finish saving and review drafts before organizing files.</p>}
-    <div className="paper-entry" title="Compilation entry point"><FileText size={14} /><span>{mainFile}</span></div>
   </>
 }

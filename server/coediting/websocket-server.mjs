@@ -50,12 +50,13 @@ export function attachSharedSockets(server, service, {
   wss.on('connection', (ws, ip) => {
     connections.add(ws)
     const peerId = randomUUID()
-    let token, file, actor, epoch, sequence = -1, editable, pending = 0, chain = Promise.resolve(), alive = true
+    let token, file, actor, epoch, path, cursor = null, sequence = -1, editable, pending = 0, chain = Promise.resolve(), alive = true
     const timeout = setTimeout(() => ws.close(4401, 'Authentication required.'), authTimeoutMs)
     ws.on('error', () => {}) // Transport failures are handled through close/reconnect.
     ws.on('pong', () => { alive = true })
     ws.on('close', () => {
       clearTimeout(timeout); clearInterval(poll); clearInterval(heartbeat)
+      if (actor) void service.presence(token, file, peerId, epoch, null, true).catch(() => {})
       token = undefined; connections.delete(ws)
       peers.delete(peerId)
       const count = (ips.get(ip) ?? 1) - 1
@@ -78,13 +79,14 @@ export function attachSharedSockets(server, service, {
       if (!current.session || current.session.epoch !== epoch) {
         ws.close(4409, 'Document session changed. Preserve local edits separately.'); return false
       }
-      if (force || current.session.sequence !== sequence || current.editable !== editable) {
+      if (force || current.session.sequence !== sequence || current.editable !== editable || current.file.path !== path) {
         sequence = current.session.sequence; editable = current.editable
-        send(ws, { type: 'state', epoch, sequence, editable, state: current.session.state })
+        path = current.file.path
+        send(ws, { type: 'state', epoch, sequence, editable, path, state: current.session.state })
       }
       const own = peers.get(peerId)
       if (own) own.checked = Date.now()
-      send(ws, { type: 'peers', peers: [...peers.values()].filter(peer => peer.file === file && peer.epoch === epoch && Date.now() - peer.checked < 5000).map(({ id, userId, name, color, cursor }) => ({ id, userId, name, color, cursor })) })
+      send(ws, { type: 'peers', peers: await service.presence(token, file, peerId, epoch, cursor) })
       return true
     }
     ws.on('message', (bytes, binary) => {
@@ -98,9 +100,9 @@ export function attachSharedSockets(server, service, {
             ws.close(4401, 'Join with a valid session.'); return
           }
           const verified = await service.actor(message.token)
-          if (!rate(`user:${verified}`, messagesPerMinute)) { ws.close(4429, 'Rate limit.'); return }
+          if (!rate(`user:${verified}`, messagesPerMinute) || !await service.rate(verified, 'operation')) { ws.close(4429, 'Rate limit.'); return }
           let current = await service.read(message.token, message.file)
-          if (!current.session && message.enable === true && Number.isInteger(message.version)) current = await service.enable(message.token, message.file, message.version)
+          if (!current.session && !message.epoch && message.enable === true && Number.isInteger(message.version)) current = await service.enable(message.token, message.file, message.version)
           if (!current.session) { ws.close(4409, 'Shared session is not enabled.'); return }
           actor = verified; token = message.token; file = message.file; epoch = current.session.epoch
           const profile = await service.admin.from('profiles').select('name').eq('id', actor).maybeSingle()
@@ -112,17 +114,19 @@ export function attachSharedSockets(server, service, {
           await sync(true); return
         }
         if (message.type === 'cursor') {
-          if (!rate(`cursor:${actor}`, 300)) return
+          if (!rate(`cursor:${actor}`, 300) || !await service.rate(actor, 'cursor')) return
           if (JSON.stringify(message.cursor).length > 2048) { ws.close(1008, 'Cursor too large.'); return }
           // Presence is ephemeral. Fresh access checks prevent writes after revocation.
           const current = await service.read(token, file)
           if (!current.session || current.session.epoch !== epoch) { ws.close(4409, 'Session changed.'); return }
           const own = peers.get(peerId)
-          if (own) { own.cursor = message.cursor; own.checked = Date.now() }
+          cursor = message.cursor
+          if (own) { own.cursor = cursor; own.checked = Date.now() }
+          await service.presence(token, file, peerId, epoch, cursor)
           for (const peer of peers.values()) if (peer.id !== peerId && peer.file === file && peer.epoch === epoch) peer.notify()
           return
         }
-        if (!rate(`user:${actor}`, messagesPerMinute)) { ws.close(4429, 'Rate limit.'); return }
+        if (!rate(`user:${actor}`, messagesPerMinute) || !await service.rate(actor, 'operation')) { ws.close(4429, 'Rate limit.'); return }
         if (message.type === 'refresh') {
           if (typeof message.token !== 'string' || message.token.length > 8192 || await service.actor(message.token) !== actor) {
             ws.close(4401, 'Account changed. Reconnect.'); return

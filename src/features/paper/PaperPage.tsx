@@ -3,7 +3,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { Link, useBlocker, useParams } from 'react-router'
 import { useAuth } from '../auth/auth-context'
 import { loadProject } from '../projects/projects-api'
-import { hydrateFigures, initializePaper, loadPaperSettings, loadPaperState, type PaperFile } from './paper-api'
+import { initializePaper, loadPaperSettings, loadPaperState, type PaperFile } from './paper-api'
 import { SourceEditor, type EditorMemory } from './SourceEditor'
 import { EditorMenu } from './EditorMenu'
 import { CompilerMenu } from './CompilerMenu'
@@ -15,7 +15,8 @@ import { PaperExplorer, type ManageRequest } from './PaperExplorer'
 import { PaperCollaborators } from './PaperCollaborators'
 import { History, ArrowLeft, PanelLeft, PanelLeftOpen, Columns2, PanelRight, Maximize2, Minimize2, Info, MoreHorizontal, FileText, X, Check } from 'lucide-react'
 import './workspace-layout.css'
-import { createCompilerSession, CompileError, sourceSignature, waitForPreparation, type Compilation } from './compiler'
+import { createCompilerSession, CompileError, sourceSignature, waitForPreparation } from './compiler'
+import { capturePaperSnapshot, matchesPaperBuild, type PaperBuild, type SharedCut } from './paper-snapshot'
 import { parseCompileDiagnostics, type CompileIssue } from './compile-diagnostics'
 import { CompileDiagnostics } from './CompileDiagnostics'
 import { PaperNavigation, QuickFileSwitch } from './PaperNavigation'
@@ -28,7 +29,6 @@ const ExportDialog = lazy(() => import('./ExportDialog'))
 const FileManager = lazy(() => import('./FileManager'))
 const CreatePaperEntryDialog = lazy(() => import('./CreatePaperEntryDialog'))
 const HistoryPanel = lazy(() => import('./HistoryPanel'))
-const ReplaceProjectDialog = lazy(() => import('./ReplaceProjectDialog'))
 const FigurePreview = lazy(() => import('./FigurePreview'))
 const ReferenceManager = lazy(() => import('./ReferenceManager'))
 const SharedWriting = lazy(() => import('./SharedWriting'))
@@ -72,12 +72,9 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
   const [explorerWidth, setExplorerWidth] = useState(initialPreferences.explorerWidth)
   const [focus, setFocus] = useState<'source' | 'pdf' | null>(() => window.matchMedia('(max-width: 900px)').matches ? null : initialPreferences.focus)
   const [pdfSearchRequest, setPdfSearchRequest] = useState<{ text: string; token: number } | null>(null)
-  const [sourceSearchRequest, setSourceSearchRequest] = useState({ text: '', token: 0 })
-  const [navigationMode, setNavigationMode] = useState<'files' | 'outline' | 'search'>('files')
   const [quickSwitch, setQuickSwitch] = useState(false)
   const [closedTabs, setClosedTabs] = useState<string[]>([])
   const [revealToken, setRevealToken] = useState(0)
-  const [replacementRequest, setReplacementRequest] = useState<{ query: string; replacement: string; matchCase: boolean } | null>(null)
   const [saveDetails, setSaveDetails] = useState(false)
   const [managerRequest, setManagerRequest] = useState<ManageRequest>({})
   const attention = !online || !!recoveryError || recovery.length > 0 || Object.values(documents).some(item => !!item.error || item.remote !== undefined)
@@ -109,12 +106,13 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
   const [compileError, setCompileError] = useState('')
   const [compileLog, setCompileLog] = useState('')
   const [compileOutcome, setCompileOutcome] = useState<'idle' | 'success' | 'failed' | 'cancelled'>('idle')
-  const [compiledSnapshot, setCompiledSnapshot] = useState<{ signature: string; revision: number; main: string; paths: string[] } | null>(null)
+  const [compiledSnapshot, setCompiledSnapshot] = useState<{ signature: string; revision: number; main: string; paths: string[]; files: PaperFile[] } | null>(null)
   const [compileTiming, setCompileTiming] = useState('')
   const [editorJump, setEditorJump] = useState<{ fileId: string; line: number; token: number; from?: number; to?: number } | null>(null)
   const [logOpen, setLogOpen] = useState(false)
-  const [output, setOutput] = useState<(Compilation & { id: number; revision: number; main: string }) | null>(null)
+  const [output, setOutput] = useState<PaperBuild | null>(null)
   const job = useRef<AbortController | null>(null)
+  const exportPreparation = useRef<AbortController | null>(null)
   const [exportSnapshot, setExportSnapshot] = useState<ExportSnapshot | null>(null)
   const [settings, setSettings] = useState<{ main_file: string; revision: number } | null>(null)
   const [manager, setManager] = useState(false)
@@ -151,7 +149,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     setEditorJump(previous => ({ fileId: file.id, line: issue.line!, token: (previous?.token ?? 0) + 1 }))
   }
 
-  useEffect(() => () => { job.current?.abort(); job.current = null }, [])
+  useEffect(() => () => { job.current?.abort(); job.current = null; exportPreparation.current?.abort() }, [])
   useEffect(() => { store.configure(!!editable, online) }, [store, editable, online])
   // Refresh only while idle; store reconciliation retains every dirty draft.
   useEffect(() => {
@@ -178,7 +176,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     return () => { active = false; clearInterval(timer); window.removeEventListener('focus', onFocus); window.removeEventListener('online', onFocus); window.removeEventListener('offline', onOffline) }
   }, [projectId, store, setFiles, editable, userId, editorMemory, compilerSession, figureCache])
 
-  async function recompile() {
+  async function recompile(getCut?: (signal: AbortSignal) => Promise<SharedCut>) {
     if (job.current || inFlight.current || !project || !files.length) return
     if (!mainFile) { setError('Add a .tex file before compiling. Use Upload files in the file manager.'); return }
     const controller = new AbortController()
@@ -189,17 +187,19 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     job.current = controller; setCompiling(true); setCompileError(''); setCompileLog(''); setCompileTiming(''); setCompileOutcome('idle'); setCompiledSnapshot(null); setCompileStatus(dirty ? 'Saving changes...' : 'Reading source...')
     inFlight.current = true; setBusy(true)
     try {
+      const editedIds = new Set(Object.values(store.getSnapshot()).filter(document => document.text !== document.base.content).map(document => document.base.id))
       if (recovery.length) throw new Error('Review recovery copies before compiling.')
       if (dirty) {
         if (!editable) throw new Error('Resolve or discard unsaved edits before compiling in read-only mode.')
         await waitForPreparation(store.saveAll(), controller.signal)
       }
-      const intended = Object.values(store.getSnapshot()).map(document => ({ id: document.base.id, text: document.text }))
-      // Access metadata and the revision-bracketed source read are independent.
-      // Keep both fresh, but avoid two extra sequential network round trips.
+      const intended = Object.values(store.getSnapshot()).filter(document => editedIds.has(document.base.id)).map(document => ({ id: document.base.id, text: document.text }))
+      if (getCut) setCompileStatus('Synchronizing edits for this build...')
+      const cut = await getCut?.(controller.signal)
+      // Capture files/main/revision atomically; figure leases protect preparation.
       const [projectRead, sourceRead] = await Promise.allSettled([
         loadProject(projectId, controller.signal),
-        loadPaperState(projectId, controller.signal),
+        capturePaperSnapshot(projectId, controller.signal, cut, figureCache),
       ])
       // Inspect access first even if the concurrent source read failed too.
       if (projectRead.status === 'rejected') throw projectRead.reason
@@ -207,27 +207,25 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       if (!data) { compilerSession.dispose(); figureCache.clear(); throw new Error('Project unavailable. Your previous preview has been cleared.') }
       if (sourceRead.status === 'rejected') throw sourceRead.reason
       const loaded = sourceRead.value
-      const snapshot = loaded.files
+      const snapshot = loaded.entries
       if (controller.signal.aborted) return
       if (intended.some(item => snapshot.find(file => file.id === item.id)?.content !== item.text)) {
         setFiles(snapshot)
         throw new Error('Source changed before compilation. Review the refreshed files and compile again.')
       }
-      setProject(data); setFiles(snapshot); setSettings(loaded.settings)
-      const current = snapshot.find((file) => file.id === selected?.id && file.kind !== 'folder') ?? snapshot.find((file) => file.path === loaded.settings?.main_file) ?? snapshot.find((file) => file.kind === 'text') ?? null
+      setProject(data); setFiles(snapshot); setSettings({ main_file: loaded.main, revision: loaded.revision })
+      const current = snapshot.find((file) => file.id === selected?.id && file.kind !== 'folder') ?? snapshot.find((file) => file.path === loaded.main) ?? snapshot.find((file) => file.kind === 'text') ?? null
       setSelected(current)
       inFlight.current = false; setBusy(false); preparing = false
-      setCompileStatus('Loading paper figures...')
-      const hydrationStarted = performance.now()
-      const sources = await hydrateFigures(snapshot, controller.signal, figureCache)
       const prepared = performance.now()
-      const main = loaded.settings?.main_file ?? 'main.tex', revision = loaded.settings?.revision ?? 0
-      setCompiledSnapshot({ signature: sourceSignature(sources, main), revision, main, paths: sources.map(file => file.path) })
+      const sources = loaded.files
+      const main = loaded.main, revision = loaded.revision
+      setCompiledSnapshot({ signature: sourceSignature(sources, main), revision, main, paths: sources.map(file => file.path), files: snapshot })
       const result = await compilerSession.compile(sources, controller.signal, text => { if (job.current === controller && !controller.signal.aborted) setCompileStatus(text) }, undefined, main)
       if (controller.signal.aborted || job.current !== controller) return
       const resultIssues = parseCompileDiagnostics(result.log, sources.map(file => file.path))
-      setOutput({ ...result, id: Date.now(), revision, main }); setCompileLog(result.log); setCompileStatus(resultIssues.length ? 'PDF produced with diagnostics' : 'PDF compiled successfully'); setCompileOutcome('success'); setLogOpen(resultIssues.some(issue => issue.severity === 'error'))
-      setCompileTiming(`Read/save ${(hydrationStarted - started).toFixed(0)} ms; figures ${(prepared - hydrationStarted).toFixed(0)} ms; engine ${(performance.now() - prepared).toFixed(0)} ms; ${result.passes ?? 3} LaTeX passes${result.bibtexRuns === undefined ? '' : `; ${result.bibtexRuns} bibliography builds`}`)
+      setOutput({ ...result, id: Date.now(), revision, main, snapshot: loaded }); setCompileLog(result.log); setCompileStatus(resultIssues.length ? 'PDF produced with diagnostics' : 'PDF compiled successfully'); setCompileOutcome('success'); setLogOpen(resultIssues.some(issue => issue.severity === 'error'))
+      setCompileTiming(`Saved snapshot ${(prepared - started).toFixed(0)} ms; engine ${(performance.now() - prepared).toFixed(0)} ms; ${result.passes ?? 3} LaTeX passes${result.bibtexRuns === undefined ? '' : `; ${result.bibtexRuns} bibliography builds`}`)
     } catch (cause) {
       if (!controller.signal.aborted && job.current === controller) {
         const detail = message(cause)
@@ -247,18 +245,31 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     }
   }
   function cancelCompile() { job.current?.abort(); setCompileStatus('Compilation cancelled') }
-  function openExport() {
+  async function openExport(getCut?: (signal: AbortSignal) => Promise<SharedCut>) {
     if (inFlight.current || !project || !files.length) return
     if (Object.values(documents).some(document => document.remote === null && document.text !== document.base.content)) { setError('Download drafts of unavailable files separately before exporting.'); return }
-    setExportSnapshot({
-      title: project.project.name,
-      files: files.map(({ path, content, kind, storage_path }) => ({ path, content, kind, storage_path })),
-      draft: null,
-      drafts: Object.values(documents).filter(document => document.text !== document.base.content).map(document => ({ path: document.remote?.path ?? document.base.path, content: document.text })),
-      pdf: output?.pdf ?? null,
-      olderPdf: stale || !!compileError || compiling,
-      warnings: /Warning:/.test(output?.log ?? ''),
-    })
+    const controller = new AbortController()
+    exportPreparation.current = controller; inFlight.current = true; setBusy(true)
+    const timeout = window.setTimeout(() => controller.abort(), 120000)
+    try {
+      const cut = await getCut?.(controller.signal)
+      const snapshot = await capturePaperSnapshot(projectId, controller.signal, cut, figureCache)
+      if (controller.signal.aborted) return
+      setExportSnapshot({
+        title: snapshot.title, files: snapshot.files, revision: snapshot.revision, main: snapshot.main,
+        compiled: output ? { files: output.snapshot.files, revision: output.revision, main: output.main } : undefined,
+        draft: null,
+        drafts: Object.values(documents).filter(document => !serverFiles.find(file => file.id === document.base.id)?.shared_epoch && document.text !== document.base.content).map(document => ({ path: document.remote?.path ?? document.base.path, content: document.text })),
+        pdf: output?.pdf ?? null, olderPdf: !matchesPaperBuild(snapshot, output) || dirty || !!compileError || compiling, warnings: /Warning:/.test(output?.log ?? ''),
+      })
+    } catch (cause) {
+      const detail = controller.signal.aborted ? 'Export preparation cancelled or timed out. Retry when connected.' : message(cause)
+      setError(detail)
+      throw new Error(detail, { cause })
+    } finally {
+      clearTimeout(timeout)
+      if (exportPreparation.current === controller) { exportPreparation.current = null; inFlight.current = false; setBusy(false) }
+    }
   }
 
   useEffect(() => {
@@ -357,7 +368,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
   const fileActions = <EditorMenu label="File" icon={<FileText size={15} aria-hidden="true" />}>
     <button disabled={busy} onClick={() => setQuickSwitch(true)}>Open a file<span className="editor-shortcut">Ctrl/Cmd P</span></button>
     <button disabled={busy || !closedTabs.some(id => files.some(file => file.id === id))} onClick={reopenTab}>Reopen closed tab</button>
-    <button disabled={!selected} onClick={() => { setFocus(null); setSidebar(true); setNavigationMode('files'); setRevealToken(value => value + 1) }}>Show current file in sidebar</button>
+    <button disabled={!selected} onClick={() => { setFocus(null); setSidebar(true); setRevealToken(value => value + 1) }}>Show current file in sidebar</button>
   </EditorMenu>
   return <div className={`paper-workbench paper-studio${focus ? ' paper-focused' : ''}`} onClick={event => {
     if (event.target instanceof Element && event.target.closest('button, a')) {
@@ -397,7 +408,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
         <div className={`paper-layout${sidebar && !focus ? ' files-open' : ''}`} style={{ '--explorer-width': `${explorerWidth}px` } as CSSProperties}>
           {!sidebar && !focus && <div className="paper-explorer-rail"><button className="tool-button" title="Open explorer" aria-label="Open explorer" aria-expanded={false} aria-controls="paper-file-sidebar" onClick={() => setSidebar(true)}><PanelLeftOpen size={17} /></button></div>}
           <aside id="paper-file-sidebar" className="paper-files" aria-label="Paper source files" hidden={!sidebar || !!focus}>
-            <PaperNavigation key={sourceSearchRequest.token} initialQuery={sourceSearchRequest.text} files={navigationFiles} mainFile={mainFile} mode={navigationMode} setMode={setNavigationMode} collapse={() => setSidebar(false)} navigate={navigateSource} canReplace={!replaceBlocked} replace={(query, replacement, matchCase) => setReplacementRequest({ query, replacement, matchCase })}>
+            <PaperNavigation files={navigationFiles} mainFile={mainFile} selectedFileId={selected?.id} navigate={navigateSource}>
               <PaperExplorer files={files} selected={selected?.id} mainFile={mainFile} editable={!!editable} disabled={busy || saving || dirty || compiling || recovery.length > 0} choose={file => { choose(file); if (window.matchMedia('(max-width: 900px)').matches) setSidebar(false) }} manage={openManager} close={() => setSidebar(false)} revealToken={revealToken} />
             </PaperNavigation>
           </aside>
@@ -436,7 +447,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
             <section className="paper-preview" aria-label="PDF preview">
               <div className="preview-heading"><Icon name="document" /><h2>PDF preview</h2>
                 <span className={`preview-badge${stale || compileError || diagnosticErrorCount ? ' outdated' : ''}`} role="status">{compiling ? 'Compiling...' : compileOutcome === 'cancelled' ? 'Cancelled' : compileOutcome === 'failed' ? 'Failed' : !output ? 'Not compiled' : stale ? 'Outdated' : diagnosticErrorCount ? `${diagnosticErrorCount} errors · PDF produced` : warningCount ? `${warningCount} warnings` : 'Compiled'}</span>
-                <button className="tool-button paper-export-button" title="Export PDF or source" disabled={busy} onClick={openExport}>Export</button>
+                <button className="tool-button paper-export-button" title="Export PDF or source" disabled={busy} onClick={() => { void openExport().catch(() => {}) }}>Export</button>
                 <button className="tool-button" title="Compilation diagnostics" aria-label="Compilation diagnostics" aria-expanded={logOpen} aria-controls="compile-log" onClick={() => setLogOpen(!logOpen)}><Icon name="log" />{issues.length ? 'Issues' : 'Log'}</button>
                 <div className="paper-compile-group">{compiling ? <button className="compile-button" onClick={cancelCompile}>Cancel</button> : <button className="compile-button" disabled={busy} onClick={() => void recompile()}><Icon name="play" />Recompile</button>}
                   <CompilerMenu mainFile={mainFile} changeDisabledReason={!editable ? 'Only project editors can change the main file.' : busy || compiling ? 'Wait for the current operation to finish.' : recovery.length > 0 ? 'Resolve recovered drafts first.' : dirty || saving ? 'Save your changes first.' : ''} restartDisabled={busy || compiling} changeMain={() => openManager()} restart={() => { compilerSession.dispose(); figureCache.clear(); void recompile() }} showReport={() => setLogOpen(true)} />
@@ -445,7 +456,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
               {(stale || compileError || compileOutcome === 'cancelled') && output && <div className="preview-stale">{compileError || compileOutcome === 'cancelled' ? `Showing the last successful PDF (revision ${output.revision}, ${output.main}).` : 'Your source has changed. Recompile to update this preview.'}</div>}
               {compileError && <p role="alert" className="compile-error">{compileError}</p>}
               {logOpen && <CompileDiagnostics key={compileLog} close={() => setLogOpen(false)} issues={issues} log={compileLog} status={compileStatus} outcome={compileOutcome} compiling={compiling} stale={diagnosticsStale} jump={jumpToIssue} summary={[compiledSnapshot && `Revision ${compiledSnapshot.revision} · ${compiledSnapshot.main}`, compileTiming].filter(Boolean).join(' · ')} />}
-              {output ? <Suspense fallback={<p className="preview-loading" role="status">Loading PDF viewer...</p>}><PdfPreview stale={stale} searchRequest={pdfSearchRequest} findSource={text => { if (stale) return; setSourceSearchRequest(previous => ({ text, token: previous.token + 1 })); setNavigationMode('search'); setSidebar(true); setFocus(null); setViewMode(window.matchMedia('(max-width: 900px)').matches ? 'source' : 'split') }} data={output.pdf} fullscreen={focus === 'pdf'} onFullscreen={() => setFocus(focus === 'pdf' ? null : 'pdf')} /></Suspense> : <div className="preview-empty"><div className="preview-sheet"><Icon name="document" /><span /><span /><span /><span /></div><h3>{compiling ? 'Bringing your paper to life' : 'Your paper, beautifully typeset.'}</h3><p>{compiling ? 'The first compile downloads the packages your paper needs.' : 'Compile your LaTeX source to see the finished paper here.'}</p>{!compiling && <button className="preview-start" disabled={busy} onClick={() => void recompile()}>Compile your paper <span>&rarr;</span></button>}</div>}
+              {output ? <Suspense fallback={<p className="preview-loading" role="status">Loading PDF viewer...</p>}><PdfPreview stale={stale} searchRequest={pdfSearchRequest} data={output.pdf} fullscreen={focus === 'pdf'} onFullscreen={() => setFocus(focus === 'pdf' ? null : 'pdf')} /></Suspense> : <div className="preview-empty"><div className="preview-sheet"><Icon name="document" /><span /><span /><span /><span /></div><h3>{compiling ? 'Bringing your paper to life' : 'Your paper, beautifully typeset.'}</h3><p>{compiling ? 'The first compile downloads the packages your paper needs.' : 'Compile your LaTeX source to see the finished paper here.'}</p>{!compiling && <button className="preview-start" disabled={busy} onClick={() => void recompile()}>Compile your paper <span>&rarr;</span></button>}</div>}
             </section>
           </div>
         </div>
@@ -453,10 +464,9 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       </>}
     </>}
     {blocker.state === 'blocked' && <LeaveDialog busy={busy || saving} stay={() => blocker.reset()} leave={() => blocker.proceed()} />}
-    {liveWriting && selected && <Suspense fallback={<p role="status">Opening live writing…</p>}><SharedWriting file={{ ...selected, shared_epoch: serverFiles.find(file => file.id === selected.id)?.shared_epoch }} projectId={projectId} userId={userId} owner={access === 'owner'} close={() => { setLiveWriting(false); void reload() }} /></Suspense>}
+    {liveWriting && selected && <Suspense fallback={<p role="status">Opening live writing…</p>}><SharedWriting file={{ ...selected, shared_epoch: serverFiles.find(file => file.id === selected.id)?.shared_epoch }} projectId={projectId} userId={userId} owner={access === 'owner'} close={() => { setLiveWriting(false); void reload() }} compile={recompile} exportPaper={openExport} cancelCompile={cancelCompile} build={output} busy={busy} report={{ compiling, status: compileStatus, error: compileError, log: compileLog, outcome: compileOutcome, timing: compileTiming, stale, snapshot: compiledSnapshot, diagnosticsStale }} /></Suspense>}
       {exportSnapshot && <Suspense fallback={<p role="status" className="export-loading">Opening export...</p>}><ExportDialog snapshot={exportSnapshot} close={() => setExportSnapshot(null)} /></Suspense>}
       {quickSwitch && project && <QuickFileSwitch files={navigationFiles} choose={id => { const file = files.find(item => item.id === id); if (file) choose(file) }} close={() => setQuickSwitch(false)} />}
-      {replacementRequest && project && <Suspense fallback={<p role="status">Opening replacement preview...</p>}><ReplaceProjectDialog projectId={projectId} {...replacementRequest} blocked={replaceBlocked} close={() => setReplacementRequest(null)} onBusy={value => { inFlight.current = value; setBusy(value) }} applied={async () => { const loaded = await loadPaperState(projectId); setFiles(loaded.files); setSettings(loaded.settings); setStatus('Project replacements saved. Recompile to update the PDF.') }} /></Suspense>}
     {historyOpen && project && <Suspense fallback={<p role="status" className="export-loading">Opening history...</p>}><HistoryPanel projectId={projectId} title={project.project.name} editable={!!editable} blocked={dirty || saving || busy || compiling || recovery.length > 0 || !!recoveryError || Object.values(documents).some(item => !!item.error || item.remote !== undefined)} close={() => setHistoryOpen(false)} onBusy={value => { inFlight.current = value; setBusy(value) }} restored={async () => {
       const loaded = await loadPaperState(projectId)
       setFiles(loaded.files); setSettings(loaded.settings); editorMemory.clear()
@@ -466,7 +476,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
     {referencesOpen && <Suspense fallback={<p role="status">Opening references…</p>}><ReferenceManager projectId={projectId} files={navigationFiles} blocked={replaceBlocked || !online} close={() => setReferencesOpen(false)} navigate={navigateSource} onBusy={value => { inFlight.current = value; setBusy(value) }} applied={async () => { const loaded = await loadPaperState(projectId); setFiles(loaded.files); setSettings(loaded.settings); setStatus('References updated. Recompile to update citations in the PDF.') }} /></Suspense>}
     {manager && settings && <Suspense fallback={<p role="status" className="export-loading">Opening file tools...</p>}>{managerRequest.kind ? <CreatePaperEntryDialog kind={managerRequest.kind} projectId={projectId} files={files} settings={settings} close={() => setManager(false)} onBusy={value => { inFlight.current = value; setBusy(value) }} created={(loaded, path) => {
       inFlight.current = false; setBusy(false)
-      setFiles(loaded.files); setSettings(loaded.settings); setManager(false); setSidebar(true); setNavigationMode('files')
+      setFiles(loaded.files); setSettings(loaded.settings); setManager(false); setSidebar(true)
       const file = loaded.files.find(item => item.path === path)
       if (file?.kind === 'text') choose(file)
       setStatus(`${managerRequest.kind === 'folder' ? 'Folder' : 'File'} created: ${path}`)

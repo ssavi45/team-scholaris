@@ -9,11 +9,24 @@ async function load(name) {
   code = code.replace(/from '(@[^']+)'/g, (_, specifier) => `from '${import.meta.resolve(specifier)}'`)
   return import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'))
 }
-const { buildOutline, searchProject, replacementPreview, approximateWords } = await load('editor-tools')
+const { buildOutline, nestOutline, searchProject, replacementPreview, approximateWords } = await load('editor-tools')
 const file = (id, content, kind = 'text') => ({ id, path: `${id}.tex`, kind, content, version: 7 })
 const files = [file('main', '\\section{Intro}\n% \\section{Hidden}\n\\input{sections/method}\n\\input{missing}'), file('sections/method', '\\section{Method}\n\\input{main}\n\\begin{verbatim}\\section{Hidden}\\end{verbatim}')]
 assert.deepEqual(buildOutline(files, 'main.tex').headings.map(h => [h.title, h.path]), [['Intro', 'main.tex'], ['Method', 'sections/method.tex']])
 assert.deepEqual(buildOutline(files, 'main.tex').unresolved, ['missing.tex'])
+const structured = [file('main', '\\section{Introduction}\n\\subsection{Goals}\n\\subsubsection{Scope}\n\\section{Methods}\n\\input{sections/method}'),
+  file('sections/method', '\\subsection{Experiment}\n\\subsection*{Experiment}\n\\section{Conclusion}')]
+const outline = buildOutline(structured, 'main.tex')
+const tree = nestOutline(outline.headings)
+assert.deepEqual(tree.map(node => node.title), ['Introduction', 'Methods', 'Conclusion'])
+assert.equal(tree[0].children[0].children[0].title, 'Scope')
+assert.deepEqual(tree[1].children.map(node => node.path), ['sections/method.tex', 'sections/method.tex'])
+assert.notEqual(tree[1].children[0].id, tree[1].children[1].id, 'Repeated headings have distinct collapse keys')
+assert.equal(tree[1].children[0].from, 0, 'Included-heading navigation retains the actual source offset')
+assert.equal(nestOutline(outline.headings.map(heading => ({ ...heading, from: heading.from + 20 })))[0].id,
+  tree[0].id, 'Typing before a heading does not change its collapse identity')
+assert.equal(nestOutline([outline.headings[2]])[0].title, 'Scope', 'A skipped parent level remains navigable')
+assert.deepEqual(nestOutline([]), [])
 const sources = [file('a', 'İ\nA.b a.b\nnext'), file('b', 'A.b'), file('image', 'A.b', 'image')]
 const hits = searchProject(sources, 'a.b', false).hits
 assert.equal(hits.length, 3)

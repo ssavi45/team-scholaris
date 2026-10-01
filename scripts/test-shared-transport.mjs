@@ -182,7 +182,7 @@ try {
   assert.ok(!restored.doc.getText('source').toString().includes('Recovered offline edit'), 'Recovery never silently merges')
   restored.restore(); await waitFor(() => restored.pending.length === 0)
   assert.ok((await service.read(accounts[0].token, file)).file.content.includes('Recovered offline edit'))
-  const peer = (await join(fresh, accounts[3])).client
+  const peer = (await join(second, accounts[3])).client
   restored.cursor(2, 6)
   const presence = await peer.next(value => value.type === 'peers' && value.peers.some(item => item.userId === accounts[0].id && item.cursor))
   const own = presence.peers.find(item => item.userId === accounts[0].id && item.cursor)
@@ -204,6 +204,23 @@ try {
   ending.send({ type: 'end' }); await ending.next(value => value.type === 'ended')
   const legacy = await service.read(accounts[0].token, file)
   assert.equal(legacy.session, null)
+  const recoveryFile = `stale-recovery:${project}:${file}`
+  const localStorage = sharedStorage(recoveryFile, accounts[0].id)
+  const recoveryDoc = new Y.Doc(); documents.push(recoveryDoc)
+  Y.applyUpdate(recoveryDoc, Buffer.from(initial.session.state, 'base64'))
+  recoveryDoc.getText('source').insert(0, 'Unsent draft after session end\n')
+  await localStorage.save({ key: recoveryFile, user: accounts[0].id, epoch: initial.session.epoch,
+    state: Buffer.from(Y.encodeStateAsUpdate(recoveryDoc)).toString('base64'), text: recoveryDoc.getText('source').toString(),
+    pending: [Buffer.from(Y.encodeStateAsUpdate(recoveryDoc)).toString('base64')], updated: Date.now() })
+  const staleLive = new SharedClient({ ...options, key: recoveryFile, storage: localStorage, enable: true, version: legacy.file.version })
+  liveClients.push(staleLive); await staleLive.start(); await waitFor(() => staleLive.blocked)
+  assert.ok(staleLive.recovery.text.includes('Unsent draft after session end'))
+  assert.ok((await localStorage.load()).pending.length, 'Rejected old-epoch recovery stays downloadable')
+  await staleLive.close(); await clearSharedRecovery(accounts[0].id)
+  const staleOwner = await connect(fresh.url)
+  staleOwner.send({ type: 'join', token: accounts[0].token, file, epoch: initial.session.epoch, enable: true, version: legacy.file.version })
+  assert.equal(await staleOwner.closed(), 4409)
+  assert.equal((await service.read(accounts[0].token, file)).session, null, 'Stale reconnect must not reenroll an ended session')
   const enrolling = await connect(fresh.url)
   enrolling.send({ type: 'join', token: accounts[0].token, file, enable: true, version: legacy.file.version })
   assert.notEqual((await enrolling.next(value => value.type === 'state')).epoch, initial.session.epoch)

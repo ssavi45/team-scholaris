@@ -85,4 +85,22 @@ export class SharedSessionService {
       p_epoch: current.session.epoch, p_sequence: current.session.sequence,
     })
   }
+  async presence(token, file, peer, epoch, cursor, leave = false) {
+    // Check the allowlist without downloading another full CRDT checkpoint.
+    // The RPC rechecks verified membership, file epoch and quotas under the lock.
+    const actor = await this.actor(token)
+    const project = await this.admin.from('paper_files').select('project_id').eq('id', file).maybeSingle()
+    if (project.error || !this.allowedProjects.has(project.data?.project_id)) throw new Error('Presence unavailable.')
+    const { data, error } = await this.admin.rpc('paper_shared_presence', {
+      p_actor: actor, p_file: file, p_peer: peer, p_epoch: epoch,
+      p_cursor: cursor, p_leave: leave,
+    })
+    if (error) throw new Error('Presence unavailable.')
+    return data
+  }
+  async rate(actor, bucket) {
+    const { data, error } = await this.admin.rpc('paper_shared_rate', { p_actor: actor, p_bucket: bucket })
+    if (error) throw new Error('Shared budget unavailable.')
+    return data
+  }
 }

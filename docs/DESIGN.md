@@ -1,6 +1,28 @@
 # Design system
 
+## Live lifecycle and coauthor following
+
+History is a compact action in Live writing and uses the familiar saved-version
+comparison. Explain that a restore creates a new revision and ends affected live
+sessions, preserving saved work; coauthors must download unsent drafts first.
+Only owners may confirm replacing/deleting/restoring live files. Renaming unchanged
+source keeps the session connected and updates its displayed/download filename.
+
+Connected avatars remain compact and use the same ring/cursor colors. Click a
+coauthor with a cursor to follow their position; show an outlined active avatar and
+an explicit following status. Clicking again or moving your own cursor stops follow.
+Do not change the user's selection or follow yourself. Missing cursors/disconnected
+participants cannot be followed. Retain accessible names and tooltip explanations.
+
 ## Live writing
+
+While connected, show the existing editor beside a compact PDF pane with Recompile,
+Export and Log. Hide/show PDF and expand it without destroying the live editor.
+At narrow widths stack the panes. Show the saved revision, loading/cancel/error
+state and outdated preview explicitly. Logs use the existing readable issue drawer;
+only unchanged locations in the live file can jump directly to source. Other files
+explain that they must be opened from the workspace. Export distinguishes captured
+saved sources, optional legacy unsaved drafts, and the PDF's matching source ZIP.
 
 Keep the project-bar Live writing action content-sized (32px minimum height).
 Center the native dialog with explicit auto margins and viewport gutters. Before
@@ -15,7 +37,7 @@ color, one avatar per person, including yourself. Keep the same ordering across
 viewers and identify yourself with '(you)' in hover/accessibility labels. Names remain in hover labels and accessible labels;
 initials are a fallback while avatars load. Owner start/end are explicit actions. Recovery asks before
 merging; failed/stale copies remain downloadable. Cursors use relative positions
-with names as well as colors. Ordinary paper tools remain outside the dialog.
+with names as well as colors. Other ordinary editing tools remain outside the dialog.
 
 ## Simplified Paper files
 
@@ -115,23 +137,29 @@ fit width/page, rotation, search and focus controls together. Keep paper white i
 both themes. Text is selectable; selected search occurrences are highlighted.
 Pages/bookmarks open in a compact navigator (overlay on narrow screens). Nearby
 thumbnails provide orientation without rendering the full document at once.
-Source lookup is labelled text search and unavailable for outdated PDFs. Maintain
+Live writing retains current-file PDF text lookup, disabled for outdated PDFs.
+The ordinary PDF viewer no longer opens a project search sidebar. Maintain
 an expandable text alternative. Browser acceptance is still required for alignment
 and touch/keyboard interactions at 375/768/1440px.
 
 
 ## PAPER-08: writing controls
 
-Use compact Files/Outline/Search sidebar modes and document tabs with dirty/conflict
-markers. Put the collapse toggle immediately before the Explorer heading, with a
-small left-side reopen control when hidden; keep collapse accessible in other sidebar
-modes. Explorer controls belong with the sidebar rather than the project bar.
-Open/reopen/reveal and editor tools remain small and theme-aware. Keep
-search results labelled by path and line; disclose approximate outline/word counts.
-Quick file switch supports arrows, Enter and Escape. Replacement uses a native
-preview dialog with explicit apply, loading/error/blocked states and changed-source
-blocks. Preserve full-width panes; small screens default to one pane and a hidden
-sidebar. Font, wrapping, indentation and layout preferences persist per user/device.
+The sidebar opens directly to Explorer above a document outline, separated by
+a keyboard/pointer-resizable horizontal divider. Both lists scroll independently.
+Use soft pane headers, thin hierarchy guides, expand/collapse chevrons and forest
+green selection. Outline headings navigate source (including linked files); their
+file/line appears on hover. Collapse the whole outline to prioritize files. Keep
+parser limitations in a compact disclosure rather than persistent explanatory text.
+
+The Files/Outline/Search mode row and project-wide search/replacement UI were
+removed at the user's request. Keep filename filtering in Explorer and Find &
+replace in the editor (Ctrl/Cmd+F), scoped to the current file. Document tabs retain
+dirty/conflict markers. Put the collapse toggle before the Explorer heading, with a
+small left-side reopen control when hidden. Open/reopen/reveal remain compact;
+quick file switch supports arrows, Enter and Escape. Preserve full-width panes;
+small screens default to one pane and a hidden sidebar. Font, wrapping, indentation
+and layout preferences persist per user/device.
 
 
 ## Compilation feedback

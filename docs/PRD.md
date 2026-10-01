@@ -1,12 +1,34 @@
 # Product Requirements Document
 
+## PAPER-13 implementation scope
+
+The controlled local pilot now includes live text, own-author undo, offline recovery,
+coauthor portraits/relative cursors, optional following, compile/export saved cuts,
+and History while connected. Renaming preserves the live session. An owner can
+confirm replacing/deleting/restoring live files after a safety checkpoint; affected
+sessions end and restored files need an explicit new session. Unsent drafts remain
+on their originating devices and are never silently merged into restored text.
+
+Presence and operation budgets work across independent gateways. Saved history
+retains corresponding private causal state within existing quotas/retention.
+Implementation completion is separate from real-browser/mobile/IME and hosted
+WSS/operational release acceptance, which remain pending. No PAPER-14 work is implied.
+
 ## Shared-writing pilot
+
+Recompile and Export remain available while the live-writing editor stays connected.
+Each action includes the initiating author's already queued edits after a durable
+ACK, then captures all saved sources, bibliography, main entry and figure identities
+at one project revision. Later typing remains independent. Unsent edits on other
+devices are not claimed as saved. Download draft remains available offline.
+The PDF identifies its revision; source export can use the newest captured saved
+revision or the exact source used by the last successful PDF. Failed/cancelled
+builds never substitute a previous PDF without clear labelling.
 
 Coauthors can open Live writing for a selected source, edit concurrently, undo their
 own changes, see named cursors/selections and recover unsent edits on the same device.
 Starting/ending is owner-controlled. The pilot keeps legacy edits fenced while a
-file is enrolled. Browser UI is implemented; full lifecycle, optional follow mode,
-cross-gateway presence and real-browser release acceptance remain outside this slice.
+file is enrolled. The completion section above adds lifecycle, following and cross-gateway presence. Real-browser release acceptance remains pending.
 
 ## Coediting architecture proof (PAPER-12)
 
@@ -48,16 +70,16 @@ future slice; external library sync remains out of scope.
 Readers scroll naturally through all pages, preserve their reading position across
 recompiles, search occurrences, select/copy text and follow citations or safe links.
 Page jump, zoom/fit/rotate/focus and bookmark/thumbnail navigation support long papers.
-Source lookup uses clearly labelled text search because this compiler has no verified
-SyncTeX output. Exact coordinate mapping and a separate preview window remain gated.
+Live-writing source lookup uses current-file text matching because this compiler
+has no verified SyncTeX output; ordinary PDF-to-project search has been removed. Exact coordinate mapping and a separate preview window remain gated.
 
 
 ## Comfortable editing (PAPER-08)
 
-Authors can navigate included chapters, find text across current drafts, reopen
-closed documents, insert undoable LaTeX snippets and customize editor readability.
-Project replacement requires a preview and saved, conflict-free source and rejects
-stale revisions. Word counts are approximate current-file counts, not publication
+Authors can navigate included chapters, find/replace text in the current editor,
+reopen closed documents, insert undoable LaTeX snippets and customize readability.
+The sidebar directly stacks Explorer and outline; the mode row and project-wide
+search/replacement UI were removed at user request on 2026-10-02. Word counts are approximate current-file counts, not publication
 metrics. Outline supports literal headings and includes, not complete TeX expansion.
 Advanced spellcheck and simultaneous coediting are outside this increment.
 
@@ -112,7 +134,7 @@ meetings → export the research artifacts.
 | Authentication | Email/password, verification, recovery, persistent sessions, protected routes; optional Google sign-in | Email flows implemented; Google provider requires environment setup |
 | Dashboard/projects | Owned and joined projects, pending invitations, project creation, private access | Implemented; five retained owned projects per user |
 | Team/invitations | Exactly one owner; owner/member/viewer access; descriptive research roles; expiring email invitations; removal and self-leave | Implemented; ownership transfer is available in Settings |
-| Paper workspace | One workspace per project; source tree, explicit saves, compilation, preview, source/PDF export, import and figures | Single-user editing implemented through PAPER-04; simultaneous coediting remains future work |
+| Paper workspace | One workspace per project; source tree, explicit saves, compilation, preview, source/PDF export, import and figures | Live coediting, recovery, presence and saved history implemented for the controlled local pilot; release acceptance pending |
 | Files | Flat research-file repository with upload, download, search, rename, delete, quotas | Implemented; separate from paper assets |
 | Chat | Persistent project discussion with actual realtime delivery | Implemented with existing channels; viewers read only |
 | Overview | Real project/team/file summaries, task counts, next meeting, recent durable activity, shortcuts | Implemented; never fabricate progress, presence, or compile status |

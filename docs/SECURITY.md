@@ -1,5 +1,41 @@
 # Security requirements
 
+## Shared lifecycle, archives and distributed presence
+
+Current file management/restore RPCs recheck verified role, active project and
+expected revision under the project lock. Only an owner can confirm terminating
+live files. Unchanged live source can be renamed by an editor while retaining its
+identity/epoch. The trusted transaction-only lifecycle setting is never accepted
+from browser input; old save/manifest operations still fail at the shared write fence.
+Invalid changes roll back atomically. Restore ends affected epochs; old updates
+cannot revive replaced/deleted files or reenroll an ended session on reconnect.
+
+Causal history and presence/rate tables have RLS and no public/authenticated/service
+CRUD grants. Only narrowly scoped SECURITY DEFINER RPCs may access them. Causal
+state counts against history quota and cascades with history deletion/pruning.
+History source remains readable only through existing project-member APIs.
+
+Presence RPCs are service-only, bind peer ID to the verified actor/file/epoch, cap
+cursor JSON at 2 KiB and expire after 10 seconds. They check current membership
+on delivery, including remote gateway participants. Limits: 50 peers per file and
+10 sessions per actor; project then actor advisory lock prevents cross-project
+budget races. Database counters enforce per-actor operation/cursor budgets across
+gateways. Tokens remain in frames/IPC memory, never URLs or diagnostics. Hosting,
+TLS termination, operational budgets and long-running load acceptance remain gated.
+
+## Compile/export snapshot boundary
+
+Snapshot RPCs use auth.uid and current verified membership under the project lock;
+no client identity, CRDT bytes or arbitrary file content is accepted. A cut requires
+the same project/file/epoch and an acknowledged sequence no newer than durable state.
+Asset leases contain at most 100 paths, expire after five minutes and cap at 60 live
+leases per actor/project. They are RLS-enabled without authenticated CRUD grants;
+release can delete only the caller's lease. A lease pins deletion but grants no
+Storage access: revoked teammates cannot download it. Existing deletion guards and
+immutable object paths remain authoritative. Failed lease release cannot pin forever.
+Captured sources/PDF/figure bytes are transient browser memory. Downloading an
+already acquired local copy cannot revoke that copy; this is not a new public share.
+
 ## Live-writing recovery and enrollment
 
 Owner-only socket enrollment checks the displayed source version before seeding;
@@ -27,7 +63,7 @@ bounded. Compression is off. The CLI refuses non-loopback plaintext hosting.
 Owner start/end is exposed over sockets with SQL authorization. Allowlist defaults empty. Backend secrets
 belong only in ignored server/coediting/.env.local (never VITE_ variables). Local
 tests do not certify deployed TLS, distributed rate limits or adversarial load.
-Browser offline recovery and lifecycle compatibility remain rollout blockers.
+Offline/lifecycle implementation is now delivered locally; real-browser and hosted release acceptance remain pending.
 
 ## PAPER-13 session slice
 
@@ -111,7 +147,11 @@ rendering uses a capped canvas window and bitmap dimensions. No new public previ
 URL, storage bucket, auth bypass or cross-window message channel is introduced.
 
 
-## Project search and replacement
+## Source search and replacement
+
+The project-wide search/replacement UI was removed on 2026-10-02. Editor Find &
+replace operates locally in the current file and retains read-only safeguards.
+The following bounds still apply to retained source utilities and manifest writes.
 
 Search uses already-authorized paper source; no external indexing service receives
 manuscripts. Literal regex escaping avoids user-supplied regex execution. Results

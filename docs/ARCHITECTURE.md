@@ -1,5 +1,70 @@
 # Architecture
 
+## Coordinated live lifecycle and retained history
+
+The current manifest RPC is apply_shared_paper_manifest. Under the project-first
+lock and expected revision it preserves enrolled file ID/epoch/state for unchanged
+source (including rename). It permits adding other files without ending live writing.
+Deleting/replacing live text requires explicit owner confirmation and a protected
+safety checkpoint. Legacy manifest/save RPCs remain fenced. Validation failures roll
+back files, sessions and history together. Atomic read_paper_state returns files,
+session markers, main and revision together while authors continue writing.
+
+restore_shared_paper_history uses the existing comparison/revision/safety protocol;
+it ends only affected live sessions, even if restored text is identical. Other live
+files keep their causal state. Restored/deleted/replaced generations require explicit
+owner enrollment with a new epoch. Old queues remain separate recovery drafts.
+No automatic causal replay into a historical source or automatic reenrollment.
+Current checkpoint/manifest/restore endpoints report stale previews as PT409.
+PostgREST maps the old 40001 code to HTTP 500; explicit HTTP 409 keeps expected
+conflicts out of upstream failure handling. See [PostgREST error mapping](https://docs.postgrest.org/en/stable/references/errors.html).
+
+Every newly captured history point atomically retains its active Yjs checkpoints,
+epochs and sequences in private paper_history_shared rows. State bytes count toward
+the existing 50 MiB history quota; retention/pruning/deletion cascade both text and
+causal data. Archives are retained for rollback/audit, not exposed to browser clients.
+Existing named/safety protection and immutable figure retention continue unchanged.
+
+Presence uses service-only PostgreSQL leases (10 seconds) across gateways. Each
+heartbeat/read checks current verified membership and epoch; names/colors are
+server assigned. Revoked participants are filtered immediately, dead process leases
+expire, and close removes own presence when possible. Project then actor advisory
+locking serializes 50 peers/file and 10 sessions/actor limits. Database rate buckets
+serialize 120 operations and 300 cursor messages per actor/minute across gateways;
+IP, process admission, queue and byte limits remain additional gateway guards.
+Polling cost and representative production load still need operational acceptance.
+
+Avatar following scrolls to a relative cursor without changing the local selection;
+local cursor movement stops following. Role changes do not recreate the editor.
+Rename metadata changes the dialog/download path, not the underlying Y.Doc.
+
+## Saved build snapshots during live writing
+
+capture_paper_snapshot locks the project briefly, rechecks verified current
+membership/nondeleted status, checks an optional file/epoch/minimum durable sequence,
+then returns files/main/revision/shared clocks together. It allows archived/viewer
+reads, never mutations. Existing source writes use the same project-first lock.
+The browser hydrates immutable figures immediately under five-minute private asset
+leases (60 outstanding per actor/project). Existing Storage membership policies,
+cleanup checks and delete trigger honor the leases. Hydration releases them on
+success/error/cancel; failed releases expire and are pruned on the next capture.
+No manuscript or CRDT snapshot archive is stored by this operation.
+
+SharedClient counts queued/acknowledged updates. A capture barrier targets edits at
+the click, not every subsequent keystroke; remote state alone is not an ACK. Offline,
+recovery, stale epoch, read-only pending work and timeout fail without dropping edits.
+PaperPage reuses its warmed compiler and binds output to the captured files/bytes,
+main and revision. Live writing reuses PDF/diagnostics/export without remounting
+CodeMirror. Source export retains the compiled copy even after later saves/deletions.
+This is a transient browser build snapshot, not a named submission checkpoint.
+
+PaperNavigation now stacks PaperExplorer and PaperOutline with a resizable divider.
+The existing draft-aware buildOutline parser retains source locations across linked
+files; nestOutline groups headings by section level with stable repeated-title IDs.
+Navigation retains the existing expected-source check before jumping. This is source
+structure, not a compiled TeX table of contents. The sidebar mode row and project
+search/replacement UI were removed on 2026-10-02; Explorer and outline stay stacked.
+
 Live-writing presence includes the authenticated actor ID for avatar lookup. The
 toolbar reuses the membership-checked project-avatar API and private signed image
 URLs; it groups multiple device connections into one portrait per coauthor. Cursor
@@ -27,7 +92,7 @@ identity/color come from the gateway's verified actor/profile, not client names.
 Presence is ephemeral and gateway-local, checked on delivery and removed on close;
 heartbeat detects dead peers. No optional follow mode yet. End shared session is
 owner-only and CAS protected; unsent old-epoch edits require separate recovery.
-Full shared lifecycle and immutable multi-file snapshot improvements remain future work.
+The lifecycle section above completes shared history and retained causal archives for the local pilot.
 
 ## PAPER-13 socket transport (B1)
 
@@ -51,7 +116,8 @@ Client messages serialize with a bounded queue. Defaults: 50 connections, ten pe
 remote IP, 60 upgrades/IP/minute, 120 messages/user/minute per gateway, eight queued
 operations/socket, 360000-byte input and approximately 3MB outbound backlog. Pings
 detect lost peers. Production needs distributed quotas and measured fan-out costs.
-No CodeMirror/offline/presence integration yet. Local tests use WS, not hosted WSS.
+At B1 delivery, UI/offline/presence was deferred; the later sections describe its
+completed local implementation. Local tests use WS, not hosted WSS.
 
 ## PAPER-13 authenticated session slice
 
@@ -66,8 +132,8 @@ onto fresh DB state; no process-local room lease/cache is authoritative.
 Owner enrollment captures safety history and checks seed source version/content.
 A table trigger fences legacy updates/deletes, including manifests/restores. Disable
 keeps materialized text/history and removes active CRDT state; reenrollment assigns
-a new epoch. Retained causal rollback archives and coordinated lifecycle remain
-beta gates. This is a direct service, not a public HTTP/WebSocket endpoint.
+a new epoch. The completion section above now provides retained causal archives
+and coordinated lifecycle; real-browser/hosted acceptance remains a beta gate. This is a direct service, not a public HTTP/WebSocket endpoint.
 
 Validation runs in disposable Node workers: 3s deadline, 64MiB old/16MiB young heap,
 2MiB stack, 256KiB update, 512KiB text, 2MiB state; eight pending validators per
@@ -234,7 +300,8 @@ are bound to the actual PDF bytes. Metadata/search still depend on document size
 only rendering memory is bounded, not total PDF.js worker memory.
 
 Real engine probing found no SyncTeX primitive/output. Source-to-PDF uses selection
-or current-line literal search; PDF-to-source uses selected-text project search.
+or current-line literal search. Live PDF-to-source uses current-file text matching;
+the ordinary viewer no longer opens project search.
 Both require a current compiled source signature. No guessed coordinate mapping.
 
 
@@ -242,10 +309,11 @@ Both require a current compiled source signature. No guessed coordinate mapping.
 
 PaperNavigation indexes current draft text through pure editor-tools helpers.
 Literal input/include traversal is cycle-safe; dynamic TeX is not evaluated.
-Search results carry source offsets and expected content, rejecting stale jumps.
+Outline navigation carries source offsets and expected content, rejecting stale jumps.
 SourceEditor uses CodeMirror compartments for theme/preferences, retaining history.
-ReplaceProjectDialog loads a coherent saved manifest and previews literal changes;
-applyPaperTree submits that original revision to the existing atomic manifest RPC.
+The old project-search/replacement dialog is no longer mounted by PaperPage.
+Editor Find & replace remains local to CodeMirror; manifest utilities remain for
+references/file operations with their existing revision and permission checks.
 No separate draft store, SQL migration or dependency is introduced. Preferences
 are version-tolerant, bounded local settings keyed by user, with no source content.
 

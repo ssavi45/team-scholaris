@@ -65,6 +65,30 @@ export type Database = {
         Update: { file_id?: string; epoch?: string; sequence?: number; state?: string; updated_at?: string }
         Relationships: [{ foreignKeyName: "paper_shared_documents_file_id_fkey"; columns: ["file_id"]; isOneToOne: true; referencedRelation: "paper_files"; referencedColumns: ["id"] }]
       }
+      paper_history_shared: {
+        Row: { history_id: number; file_id: string; epoch: string; sequence: number; state: string }
+        Insert: { history_id: number; file_id: string; epoch: string; sequence: number; state: string }
+        Update: { history_id?: number; file_id?: string; epoch?: string; sequence?: number; state?: string }
+        Relationships: [{ foreignKeyName: "paper_history_shared_history_id_fkey"; columns: ["history_id"]; isOneToOne: false; referencedRelation: "paper_history"; referencedColumns: ["id"] }]
+      }
+      paper_shared_presence: {
+        Row: { peer_id: string; actor_id: string; file_id: string; epoch: string; cursor: Json | null; expires_at: string }
+        Insert: { peer_id: string; actor_id: string; file_id: string; epoch: string; cursor?: Json | null; expires_at: string }
+        Update: { peer_id?: string; actor_id?: string; file_id?: string; epoch?: string; cursor?: Json | null; expires_at?: string }
+        Relationships: [{ foreignKeyName: "paper_shared_presence_file_id_fkey"; columns: ["file_id"]; isOneToOne: false; referencedRelation: "paper_files"; referencedColumns: ["id"] }]
+      }
+      paper_shared_rates: {
+        Row: { actor_id: string; bucket: string; minute: number; count: number }
+        Insert: { actor_id: string; bucket: string; minute: number; count: number }
+        Update: { actor_id?: string; bucket?: string; minute?: number; count?: number }
+        Relationships: []
+      }
+      paper_snapshot_leases: {
+        Row: { id: string; project_id: string; user_id: string; storage_paths: string[]; expires_at: string }
+        Insert: { id: string; project_id: string; user_id: string; storage_paths: string[]; expires_at: string }
+        Update: { id?: string; project_id?: string; user_id?: string; storage_paths?: string[]; expires_at?: string }
+        Relationships: [{ foreignKeyName: "paper_snapshot_leases_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] }]
+      }
       paper_workspaces: {
         Row: {
           created_at: string
@@ -454,6 +478,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      read_paper_state: { Args: { p_project: string }; Returns: Json }
+      create_shared_paper_checkpoint: { Args: { p_project_id: string; p_revision: number; p_label: string }; Returns: number }
+      apply_shared_paper_manifest: { Args: { p_project_id: string; p_revision: number; p_entries: Json; p_main_file: string; p_confirm_shared?: boolean }; Returns: undefined }
+      restore_shared_paper_history: { Args: { p_project_id: string; p_history_id: number; p_revision: number; p_file_id?: string; p_confirm_shared?: boolean }; Returns: number }
+      paper_shared_presence: { Args: { p_actor: string; p_file: string; p_peer: string; p_epoch: string; p_cursor?: Json; p_leave?: boolean }; Returns: Json }
+      paper_shared_rate: { Args: { p_actor: string; p_bucket: string }; Returns: boolean }
+      capture_paper_snapshot: { Args: { p_project: string; p_file?: string; p_epoch?: string; p_sequence?: number }; Returns: Json }
+      release_paper_snapshot: { Args: { p_snapshot: string }; Returns: undefined }
       list_shared_paper_files: { Args: { p_project: string }; Returns: { file_id: string; epoch: string }[] }
       paper_shared_session: {
         Args: { p_actor: string; p_file: string; p_action: string; p_epoch?: string;

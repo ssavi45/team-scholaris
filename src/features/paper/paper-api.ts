@@ -46,12 +46,11 @@ export async function loadPaperSettings(projectId: string, signal?: AbortSignal)
   return data
 }
 export async function loadPaperState(projectId: string, signal?: AbortSignal) {
-  // Bracket the read with revisions to reject a tree assembled across concurrent writes.
-  const before = await loadPaperSettings(projectId, signal)
-  const files = await loadPaper(projectId, signal)
-  const settings = await loadPaperSettings(projectId, signal)
-  if (before?.revision !== settings?.revision) throw new Error('The paper changed while loading. Please reload.')
-  return { files, settings }
+  let query = client().rpc('read_paper_state', { p_project: projectId })
+  if (signal) query = query.abortSignal(signal)
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return data as unknown as { files: PaperFile[]; settings: { revision: number; main_file: string } | null }
 }
 export async function hydrateFigures(files: SourceFile[], signal: AbortSignal, cache?: Map<string, Uint8Array<ArrayBuffer>>): Promise<SourceFile[]> {
   // Storage objects are immutable. Caller scopes this optional cache to one authorized workspace.
@@ -75,7 +74,7 @@ export async function hydrateFigures(files: SourceFile[], signal: AbortSignal, c
   }
   return result
 }
-export async function applyPaperTree(projectId: string, revision: number, entries: TreeEntry[], mainFile: string) {
+export async function applyPaperTree(projectId: string, revision: number, entries: TreeEntry[], mainFile: string, confirmShared = false) {
   validateTree(entries, mainFile)
   const uploaded: string[] = []
   let committed = false
@@ -93,7 +92,7 @@ export async function applyPaperTree(projectId: string, revision: number, entrie
       }
       manifest.push({ id: entry.id ?? null, path: entry.path, kind: entry.kind, content: entry.content, storage_path: storagePath })
     }
-    const { error } = await client().rpc('apply_paper_manifest', { p_project_id: projectId, p_revision: revision, p_entries: manifest, p_main_file: mainFile })
+    const { error } = await client().rpc('apply_shared_paper_manifest', { p_project_id: projectId, p_revision: revision, p_entries: manifest, p_main_file: mainFile, p_confirm_shared: confirmShared })
     if (error) throw new Error(error.message)
     committed = true
   } finally {
