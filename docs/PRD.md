@@ -1,5 +1,13 @@
 # Product Requirements Document
 
+## Coediting architecture proof (PAPER-12)
+
+Prove that concurrent authors can merge edits without silent loss before offering
+live shared writing. Deliver an isolated prototype, failure/recovery evidence,
+architecture decision and gated rollout plan. This build adds no user-visible
+collaboration status, cursors or production simultaneous editing. Existing
+versioned-save conflict protection remains the active writing protocol.
+
 ## Flexible equation composition
 
 Insert equation supports free-form LaTeX, inline/display/numbered/aligned layouts,

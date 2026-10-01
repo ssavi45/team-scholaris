@@ -1,5 +1,52 @@
 # Test plan
 
+## Empty workspace and file-management regression
+
+`node scripts/test-empty-paper.mjs` checks main-file selection/validation.
+`node scripts/test-empty-paper.mjs --local` creates disposable local accounts/project
+and verifies clear/reopen/repopulate, bibliography-only import, invalid main
+rejection, cleared-file recovery, empty-snapshot restore and viewer delete denial.
+Requires local Supabase and Docker access; fixtures are cleaned up afterwards.
+Manual: upload several sources, import ZIP with/without collisions, cancel after
+deletions, delete main/all, save then reopen, upload a new manuscript, restore from
+History; check small screens and both themes. Real user projects must not be used
+as automated deletion fixtures. Hosted migrations remain separate from local checks.
+
+## PAPER-12 coediting prototype
+
+Run `npm run test:coediting` (or `node scripts/test-paper-coediting.mjs`). Requires
+child-process execution for the restart probe. Uses generated temporary data and
+signed fixture users; no Supabase credentials, real accounts or live invitations.
+
+Assertions: same/different-file edits, reordered dependent packets, duplicates,
+lost ACK retry, offline reconciliation, origin-scoped undo/redo, CodeMirror binding
+state construction, separate-process hydration, immutable snapshot, invalid/expired/
+wrong-project identity, viewer/revocation/demotion, legacy-write rejection, rename,
+restore epoch, tombstone/archive, malformed/schema/text/update limits, failed disk
+commit and rate rejection. Rejected changes stay queued locally.
+
+Measured 2026-10-01, Windows Node v24.16.0, synthetic TeX, 10 rounds, synchronous
+local persistence, all clients within one process, no browser/network:
+
+| Clients | Approx source KiB | Writes | Total ms | Persist p95 ms |
+| --- | --- | --- | --- | --- |
+| 2 | 10 | 20 | 64 | 3.38 |
+| 2 | 100 | 20 | 100 | 8.98 |
+| 2 | 400 | 20 | 169 | 9.72 |
+| 5 | 10 | 50 | 148 | 3.76 |
+| 5 | 100 | 50 | 210 | 5.02 |
+| 5 | 400 | 50 | 440 | 12.86 |
+
+Whole harness peak RSS 184,784 KiB, includes all client replicas, test libraries
+and sequential scenarios; not isolated server capacity. No cold/hot network p95,
+power-failure or long-soak guarantee. Repeat measurements before sizing deployment.
+
+Production acceptance still required: two/five actual accounts and browser DOM/IME,
+real DB transaction rollback, gateway crash between persist and fan-out, distributed
+room fencing, active-socket expiry/revocation, refresh/offline local queue, malicious
+decode resource exhaustion, generation conflicts and actual PDF/history/ZIP snapshots.
+Do not mark PAPER-13 ready solely because this local model passes.
+
 ## Recompile latency regression
 
 Run test-compiler-session.mjs and test-compiler-package-cache.mjs. Verify warm engine

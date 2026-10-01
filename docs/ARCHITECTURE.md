@@ -1,5 +1,81 @@
 # Architecture
 
+## Empty Paper manifests and simplified file management
+
+FileManager retains atomic revision-checked manifest writes and private-figure
+cleanup/history protections. File rows replace the select list; non-colliding
+uploads merge into local staged entries, conflict/skipped-file review remains.
+Save changes is the only persistence action. Empty manifests are allowed; an empty
+main_file is valid only when no .tex source exists. History capture includes [] so
+restores can preserve an empty current state and empty snapshots can be restored.
+Empty-workspace history/upload actions remain accessible. Two 20261001 migrations
+replace private validators/capture functions; no RLS or permission relaxation.
+
+## PAPER-12 bounded coediting prototype
+
+`scripts/coediting/gateway.mjs` is an executable single-project model, not an API.
+Signed fixture identities -> per-operation role check -> clone Yjs candidate ->
+validate source/limits -> atomic local persisted state -> revision acknowledgement.
+The test injects dropped ACKs, duplicates, reordering and disconnected client edits.
+One stable file ID maps to a source Y.Text and epoch. Rename preserves that identity;
+restore resets state and increments epoch; delete tombstones it. Old epochs cannot
+resurrect deleted/replaced text. Failed writes retain the client's unsent queue.
+
+`fixture-auth.mjs` signs test identities; it does NOT verify Supabase sessions.
+`restart-probe.mjs` is a separate child process which rehydrates disk-only state.
+Snapshots materialize all current text at one model revision. This tests source
+consistency, not actual compile/export/history integration or private asset hydration.
+The CodeMirror binding passes state construction; DOM selection/IME is untested.
+All fixtures use temporary generated manuscripts, never real user data.
+
+### Proposed integration contract and rollout slices
+
+1. Local integration gate: trusted gateway validates real Supabase tokens (signature,
+   issuer, audience, expiry and verified account) and queries authoritative membership.
+   Use WSS, explicit origin allowlist and private rooms. Never trust client role,
+   user ID, project ownership or awareness name. Verify two actual accounts before beta.
+2. Durable model: project protocol version and revision; stable file ID/generation;
+   Yjs checkpoint + append-only accepted updates with unique update IDs/sequences.
+   Project lock precedes document lock, matching existing paper mutations. Validate
+   candidates in isolated bounded workers, recheck access under DB transaction,
+   commit before ACK/fan-out. Serialize each room; fence stale gateway owners so two
+   processes cannot acknowledge divergent DB state. Test crash before/after ACK.
+3. Migration transaction: pause editors, drain acknowledged legacy saves, preserve a
+   history checkpoint, seed each file ONCE from current persisted content, switch
+   project protocol under lock. Update save_paper_file, apply_paper_manifest,
+   restore/history, rename/delete/import and any direct table write policies to
+   enforce the protocol. An old tab receives an explicit upgrade/reload error.
+   No blind fallback to whole-file writes. Preserve recovery drafts for comparison.
+4. Browser slice: bind Y.Text to CodeMirror, replace standalone undo with Yjs history,
+   persist pending updates by user/project/file/epoch, reconcile on reconnect, display
+   unsent/syncing/saved honestly. Do not append a second copy of initial text. Keep
+   rejected local work exportable; logout/access loss closes rooms and clears private
+   session caches according to recovery policy. Revocation cannot erase text already
+   downloaded, but must prevent all future reads/writes and presence delivery.
+5. Lifecycle/snapshot slice: rename changes manifest path only; delete/restore fences
+   old epochs and requires stale clients to recover separately. All project mutations
+   advance a revision. Compile/export/checkpoint take an immutable DB snapshot with
+   exact file generations, text, main file and immutable binary references; compile
+   uses that manifest even if edits continue. Restart/disconnect never implies Saved.
+6. Presence slice: authorized expiring ephemeral heartbeat/cursor state, no durable
+   manuscript authority. Debounce and bound payloads; idle disconnect timeout, no
+   fake online member avatars. New permissions take effect on open sessions.
+7. Controlled beta: two then five real accounts, mobile/IME/keyboard/undo, offline
+   refresh, dropped/reordered traffic, revoked sessions, multi-process restart,
+   import/restore conflicts, coherent actual PDF/ZIP/history and load soak. Set host
+   budget and operational ownership before enabling shared rooms.
+
+Rollback: stop new shared writes, drain committed updates, materialize one checkpoint
+under project lock, increase protocol/generation and publish a legacy baseline.
+Keep CRDT log/checkpoints and recovery drafts until accepted recovery/retention ends.
+Force old clients to reload; never merge old-epoch queues silently into the baseline.
+
+Prototype limits: 256 KiB/update, 512 KiB UTF-8 source, 2 MiB encoded room state,
+120 operations/user/minute. These are test bounds, not production quota changes.
+Single-process synchronous file replacement does not prove distributed transactions,
+power-loss filesystem durability, bounded hostile decode CPU, network latency,
+Supabase authorization or browser binding behavior. Production gate remains closed.
+
 ## Recompile preparation and BibTeX deduplication
 
 After saving drafts, fresh access metadata and the revision-bracketed manifest read

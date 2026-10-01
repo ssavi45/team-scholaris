@@ -2,6 +2,10 @@ import type { SourceFile } from './compiler'
 export type TreeEntry = SourceFile & { id?: string; kind: 'text' | 'image' | 'folder'; size_bytes?: number }
 export const textExtension = /\.(tex|bib|sty|cls|txt|bst|clo|cfg|def)$/
 export const imageExtension = /\.(png|jpg|jpeg)$/
+export function chooseMainFile(entries: TreeEntry[], current: string) {
+  const sources = entries.filter(entry => entry.kind === 'text' && entry.path.endsWith('.tex'))
+  return sources.find(entry => entry.path === current)?.path ?? sources.find(entry => entry.path === 'main.tex')?.path ?? sources[0]?.path ?? ''
+}
 export function validPath(path: string) {
   return path.length <= 240 && /^[A-Za-z0-9_-][A-Za-z0-9_.-]*(\/[A-Za-z0-9_-][A-Za-z0-9_.-]*)*$/.test(path)
     && path.split('/').every((part) => !part.endsWith('.') && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(part))
@@ -24,7 +28,7 @@ export function validateTree(entries: TreeEntry[], mainFile?: string) {
     if (entries.some((parent) => parent.kind !== 'folder' && entry.path.toLowerCase().startsWith(parent.path.toLowerCase() + '/'))) throw new Error(`File/folder conflict: ${entry.path}`)
   }
   if (textSize > 5242880 || imageSize > 26214400) throw new Error('Workspace limit: 5 MiB source and 25 MiB figures.')
-  if (mainFile !== undefined && !entries.some((entry) => entry.path === mainFile && entry.kind === 'text' && entry.path.endsWith('.tex'))) throw new Error('Choose an existing .tex file as the main file.')
+  if (mainFile !== undefined && !(mainFile === '' && !entries.some(entry => entry.kind === 'text' && entry.path.endsWith('.tex'))) && !entries.some((entry) => entry.path === mainFile && entry.kind === 'text' && entry.path.endsWith('.tex'))) throw new Error('Choose an existing .tex file as the main file.')
 }
 export function moveEntries(entries: TreeEntry[], from: string, to: string) {
   if (!validPath(to) || to.startsWith(from + '/')) throw new Error('Choose a valid destination outside this folder.')

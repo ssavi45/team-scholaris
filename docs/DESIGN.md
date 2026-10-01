@@ -1,5 +1,21 @@
 # Design system
 
+## Simplified Paper files
+
+Lead with Upload files and Import ZIP. Show each path with Rename/Delete actions;
+keep creation/templates/limits in disclosures. Delete all files explains its scope
+and requires confirmation; changes persist only on Save changes. Cancel discards
+the staged changes. Review filename conflicts explicitly, never overwrite silently.
+Empty workspace must offer uploading and access to retained Paper history.
+
+## Future shared-writing status contract
+
+PAPER-12 is a prototype only. When integrated, show Saved only after a durable
+acknowledgement; distinguish Syncing, Offline (local edits), and Access changed.
+Never use project membership avatars as evidence of live presence. Undo must undo
+only the current author's actions. Keep recovery/export available for rejected
+local edits without offering a button that silently overwrites the shared paper.
+
 ## Equation composer
 
 Insert > Insert equation opens a native modal with four labelled layout choices,

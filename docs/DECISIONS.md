@@ -1,5 +1,46 @@
 # Architecture and product decisions
 
+## PAPER-12: coediting decision gate — 2026-10-01
+
+Status: bounded local proof delivered; production rollout NOT accepted yet.
+Select Yjs 13.6.33 + y-codemirror.next 0.3.6 for further integration, as development
+dependencies only. No coediting code is imported by the application. Keep existing
+versioned saves authoritative until the migration gate passes.
+
+| Candidate | Merge/recovery | Infrastructure and operating cost | Decision |
+| --- | --- | --- | --- |
+| Current versioned whole-file saves | Rejects conflicting writes; users reconcile manually | Existing Supabase; lowest added operations | Retain until migration; not simultaneous writing |
+| Yjs + trusted persistent WebSocket gateway | Incremental convergence and local-origin undo; needs durable sync protocol | Adds an always-running service, DB update/checkpoint storage, monitoring and egress | Recommended production topology, subject to hosting/budget selection |
+| Yjs + client-to-client Broadcast alone | Merges delivered updates; no authoritative durable ACK | Existing Realtime but still requires trusted persistence and revocation enforcement | Reject as sole source of truth |
+| Managed collaboration provider | May reduce transport operations; requires evaluating auth, retention, export and residency | Vendor subscription/usage cost, no provider selected | Revisit if self-hosted operations are unsuitable |
+
+Use one room per stable file ID and document generation, not path. Trusted gateway
+checks verified identity/current membership/active project on writes and access on
+reads. Shared documents must reject every old whole-file mutation path server-side.
+Never combine CodeMirror's standalone history with Yjs undo for the same document.
+The existing Undo/Redo toolbar must call the active protocol's history adapter.
+
+Transport recommendation is an engineering inference, not a purchased service.
+[Yjs updates](https://docs.yjs.dev/api/document-updates) tolerate duplicate/reordered
+delivery; [UndoManager](https://docs.yjs.dev/api/undo-manager) scopes undo by origin.
+[CodeMirror binding](https://github.com/yjs/y-codemirror.next) provides the editor adapter.
+[Supabase Realtime authorization](https://supabase.com/docs/guides/realtime/authorization)
+checks channel admission; it is not our durable write transaction. Hosted
+[Edge Function limits](https://supabase.com/docs/guides/functions/limits) make a
+long-lived authoritative room a separate operational decision. Reviewed 2026-10-01.
+
+Budget gate: no recurring spend introduced by this prototype. Before rollout, price
+gateway baseline compute + peak room memory + database writes/storage/backups +
+fan-out egress + monitoring. For N editors batching U updates/second of mean B bytes,
+room ingress is N*U*B and peer fan-out roughly N*(N-1)*U*B bytes/second, excluding
+protocol overhead/reconnect/checkpoints. Full-state rewrite per update is a proof
+mechanism only; production needs compacted checkpoints + bounded append log.
+No dollar estimate or free-tier viability claimed without provider/load selection.
+
+Local proof is positive; hosted security and operational feasibility remain open.
+PAPER-13 must begin with the integration gates in ARCHITECTURE, not enable a feature
+flag against this fixture gateway. No migrations, paid services or deployment here.
+
 ## Reduce recompile waits without weakening snapshot checks
 
 Overlap independent authorization metadata and coherent source reads; retain the

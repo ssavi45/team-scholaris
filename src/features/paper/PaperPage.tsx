@@ -26,6 +26,7 @@ import type { ExportSnapshot } from './ExportDialog'
 const PdfPreview = lazy(async () => ({ default: (await import('./PdfPreview')).PdfPreview }))
 const ExportDialog = lazy(() => import('./ExportDialog'))
 const FileManager = lazy(() => import('./FileManager'))
+const CreatePaperEntryDialog = lazy(() => import('./CreatePaperEntryDialog'))
 const HistoryPanel = lazy(() => import('./HistoryPanel'))
 const ReplaceProjectDialog = lazy(() => import('./ReplaceProjectDialog'))
 const FigurePreview = lazy(() => import('./FigurePreview'))
@@ -177,6 +178,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
 
   async function recompile() {
     if (job.current || inFlight.current || !project || !files.length) return
+    if (!mainFile) { setError('Add a .tex file before compiling. Use Upload files in the file manager.'); return }
     const controller = new AbortController()
     const started = performance.now()
     let timedOut = false
@@ -366,7 +368,7 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       <h1 title={project?.project.name}>{project?.project.name ?? 'Paper workspace'}</h1>
       <span className="paper-permission">{editable ? 'Can edit' : 'Read-only'}</span>
       <button className={`tool-button paper-save-state${attention ? ' needs-attention' : ''}`} aria-controls="paper-save-details" aria-expanded={saveDetails || attention} onClick={() => setSaveDetails(!saveDetails)} title={status || 'Save status and draft protection'}>{attention ? <Info size={14} /> : saving ? <span className="loading-spinner" /> : !dirty ? <Check size={14} /> : null}{!online ? 'Offline' : attention ? 'Review drafts' : saving ? 'Saving...' : dirty ? 'Unsaved changes' : 'Saved'}</button>
-      {project && !!files.length && <button className="tool-button" title="Paper history" disabled={busy} onClick={() => setHistoryOpen(true)}><History size={16} /><span className="paper-history-label">History</span></button>}
+      {project && settings && <button className="tool-button" title="Paper history" disabled={busy} onClick={() => setHistoryOpen(true)}><History size={16} /><span className="paper-history-label">History</span></button>}
       {project && <PaperCollaborators projectId={projectId} />}
       <div className="paper-layout-controls" aria-label="Workspace layout">
         <button className="tool-button" title="Toggle explorer" aria-label="Toggle explorer" aria-expanded={sidebar && !focus} onClick={() => { setSidebar(focus ? true : !sidebar); setFocus(null) }}><Icon name="files" /></button>
@@ -384,11 +386,12 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       {!editable && <p className="paper-readonly">{project.project.status === 'archived' ? 'Archived project' : 'Viewer access'} &middot; You can read the source and compile a preview. Editing is disabled.</p>}
       <div id="paper-save-details" className="paper-save-drawer" hidden={!saveDetails && !attention}><DraftPanel store={store} documents={documents} recovery={recovery} online={online} editable={!!editable} busy={busy || saving} restore={record => void restoreCopy(record)} discardRecovery={record => void discardCopy(record)} refresh={reload} /><button className="tool-button" disabled={attention} onClick={() => setSaveDetails(false)}>Close details</button></div>
       {!files.length ? <section className="paper-welcome"><div className="paper-document-icon">T<span>E</span>X</div><p className="eyebrow">A SPACE FOR YOUR NEXT IDEA</p><h2>Every paper starts with a blank page.</h2><p>Create your LaTeX source, bring your research together,<br />and see it take shape alongside a PDF preview.</p>{editable ? <button className="button primary compact-button" disabled={busy} onClick={() => void perform(async () => {
+        if (settings) { setManagerRequest({}); setManager(true); return }
         const sources = await initializePaper(projectId); setFiles(sources)
         setSettings(await loadPaperSettings(projectId))
         const first = sources.find((file) => file.path === 'main.tex') ?? sources[0]
         setSelected(first)
-      })}>{busy ? 'Creating...' : 'Create your paper'}</button> : <p>An owner or member can initialize this paper.</p>}</section> : <>
+      })}>{busy ? 'Opening...' : settings ? 'Upload files or start a new paper' : 'Create your paper'}</button> : <p>An owner or member can add files to this paper.</p>}</section> : <>
         <div className={`paper-layout${sidebar && !focus ? ' files-open' : ''}`} style={{ '--explorer-width': `${explorerWidth}px` } as CSSProperties}>
           <aside id="paper-file-sidebar" className="paper-files" aria-label="Paper source files" hidden={!sidebar || !!focus}>
             <PaperNavigation key={sourceSearchRequest.token} initialQuery={sourceSearchRequest.text} files={navigationFiles} mainFile={mainFile} mode={navigationMode} setMode={setNavigationMode} navigate={navigateSource} canReplace={!replaceBlocked} replace={(query, replacement, matchCase) => setReplacementRequest({ query, replacement, matchCase })}>
@@ -457,7 +460,13 @@ function PaperWorkspace({ projectId }: { projectId: string }) {
       setOpened([]); setStatus('Historical version restored. Recompile to update the PDF.')
     }} /></Suspense>}
     {referencesOpen && <Suspense fallback={<p role="status">Opening references…</p>}><ReferenceManager projectId={projectId} files={navigationFiles} blocked={replaceBlocked || !online} close={() => setReferencesOpen(false)} navigate={navigateSource} onBusy={value => { inFlight.current = value; setBusy(value) }} applied={async () => { const loaded = await loadPaperState(projectId); setFiles(loaded.files); setSettings(loaded.settings); setStatus('References updated. Recompile to update citations in the PDF.') }} /></Suspense>}
-    {manager && settings && <Suspense fallback={<p role="status" className="export-loading">Opening file manager...</p>}><FileManager initialPath={managerRequest.path} initialKind={managerRequest.kind} projectId={projectId} files={files} settings={settings} close={() => setManager(false)} onBusy={(value) => { inFlight.current = value; setBusy(value) }} applied={(warning) => { setError(warning ?? ''); setManager(false); setLoading(true); setAttempt((value) => value + 1) }} /></Suspense>}
+    {manager && settings && <Suspense fallback={<p role="status" className="export-loading">Opening file tools...</p>}>{managerRequest.kind ? <CreatePaperEntryDialog kind={managerRequest.kind} projectId={projectId} files={files} settings={settings} close={() => setManager(false)} onBusy={value => { inFlight.current = value; setBusy(value) }} created={(loaded, path) => {
+      inFlight.current = false; setBusy(false)
+      setFiles(loaded.files); setSettings(loaded.settings); setManager(false); setSidebar(true); setNavigationMode('files')
+      const file = loaded.files.find(item => item.path === path)
+      if (file?.kind === 'text') choose(file)
+      setStatus(`${managerRequest.kind === 'folder' ? 'Folder' : 'File'} created: ${path}`)
+    }} /> : <FileManager initialPath={managerRequest.path} projectId={projectId} files={files} settings={settings} close={() => setManager(false)} onBusy={(value) => { inFlight.current = value; setBusy(value) }} applied={(warning) => { setError(warning ?? ''); setManager(false); setLoading(true); setAttempt((value) => value + 1) }} />}</Suspense>}
   </div>
 }
 

@@ -1,5 +1,65 @@
 # Project memory
 
+File manager close control now uses a 22px X in a bordered 44px target, theme-aware
+contrast and visible hover/keyboard focus states. Busy-state disabling is retained.
+
+## Explorer create-action routing
+
+New source file and New folder now open dedicated name-entry dialogs, persisting
+on Create through the existing authorized/revision-checked manifest API. Source
+creation requires a supported extension and opens the new file in the editor.
+Folder creation adds an empty folder. Upload or manage files alone opens the full
+manager. Duplicate/invalid paths show inline errors; Cancel makes no changes.
+If refresh fails after successful creation, retry reloads instead of creating again.
+
+## Simplified Paper file management — 2026-10-01
+
+Prominent Upload files / Import ZIP / Delete all files, individual Rename/Delete
+rows and one Save changes action. Non-conflicting uploads join the editable list
+directly; collisions/skipped files retain review. Cancel discards unsaved file
+changes. Templates/new-file tools/limits are collapsed to reduce clutter.
+
+Deleting the main file automatically selects another .tex when available; no .tex
+means blank main_file. Empty/support-only workspaces are valid. History remains
+accessible after clearing; the empty workspace can reopen the uploader. Compile
+without .tex gives an actionable message. No project deletion or user data clearing
+was performed; Delete all is a UI capability requiring user confirmation and Save.
+
+Applied 20261001000100_empty_paper_workspace.sql and
+20261001000200_empty_paper_history.sql LOCALLY only. The history follow-up fixes
+empty safety snapshots which initially blocked restoration after a clear.
+Local disposable authenticated tests passed clear/reopen/repopulate, support-only
+upload, recover cleared files, restore empty snapshot and viewer delete rejection.
+Helper/asset checks, lint/build passed; visual browser acceptance remains pending.
+Hosted environments need both migrations before this flow is enabled there.
+
+## PAPER-12 architecture proof — 2026-10-01
+
+Delivered isolated Yjs coediting model in scripts/coediting and executable
+test-paper-coediting.mjs (`npm run test:coediting`). Dev-only Yjs 13.6.33 and
+y-codemirror.next 0.3.6; no runtime import, UI change, migrations or hosted rollout.
+The gateway models signed fixture auth/current roles, isolated candidate validation,
+disk-before-ACK persistence, revision snapshots and file-generation fencing.
+
+Local fault/restart/auth-model/undo tests pass; two/five clients converge on roughly
+10/100/400 KiB manuscripts. Latest persist p95 3.38–12.86 ms on local disk, not a
+browser/network promise. TEST_PLAN records results and limits. CodeMirror extension
+state construction is checked; rendered binding is NOT verified. The process-restart
+test required execution outside sandbox after child spawn was denied.
+
+DECISIONS recommends Yjs with a trusted persistent gateway, pending hosting/budget
+and real Supabase/browser integration gates. ARCHITECTURE defines migration, legacy
+RPC fencing, coherent snapshots, restore/delete generations and rollback. Prototype
+evidence is delivered; production coediting decision remains conditional. Next:
+PAPER-12 integration acceptance before PAPER-13 controlled rollout. Do not label
+the current workspace live coediting or use these fixture scripts as a server.
+
+Dependency install exposed an existing brace-expansion advisory. Compatible patch
+updated the lockfile; npm reported zero vulnerabilities after update.
+Prototype regressions, lint, production build and whitespace checks passed.
+The existing application chunk-size warning remains; production bundle contents
+do not include the prototype or its development-only Yjs dependencies.
+
 ## Figure insertion safety follow-up
 
 Figure insertion now captures the original source/selection, rejects stale source
@@ -55,7 +115,8 @@ custom-macro fallback are documented in SECURITY and DECISIONS. Browser connecti
 was unavailable; UI/theme/keyboard/manual persistence acceptance remains pending.
 Equation helper tests, real LaTeX compilation of all layouts/building blocks,
 editor/draft regressions, lint, production build and whitespace checks passed.
-Existing bundle-size warning remains. PAPER-12 remains unstarted.
+Existing bundle-size warning remains. PAPER-12 subsequently reached the local
+prototype stage; see the newer handoff above.
 
 
 ## PAPER-11 handoff ? 2026-09-30
@@ -84,7 +145,8 @@ chapter export/reimport and compilation. Editor/draft/reference regressions,
 lint, production build and whitespace checks passed. Existing bundle-size warning
 remains. Browser/backend manual acceptance remains pending.
 Optional General Files copying and PDF/SVG/EPS conversion remain deferred.
-PAPER-10 manual acceptance also remains pending. PAPER-12 has not started.
+PAPER-10 manual acceptance also remains pending. PAPER-12 is now a local prototype,
+with production integration gates open.
 
 
 ## PAPER-10 handoff — 2026-09-30

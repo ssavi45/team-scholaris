@@ -36,7 +36,7 @@ export function PaperExplorer({ files, selected, mainFile, editable, disabled, c
         {context === file.path && <div className="paper-file-context" onKeyDown={event => { if (event.key === 'Escape') setContext(null) }}>
           <strong>{file.path}</strong>
           <button onClick={() => { choose(file); setContext(null) }}>Open file</button>
-          {editable && <button disabled={disabled} onClick={() => { manage({ path: file.path }); setContext(null) }}>Rename / move / delete...</button>}
+          {editable && <button disabled={disabled} onClick={() => { manage({ path: file.path }); setContext(null) }}>Manage this file...</button>}
           <button onClick={() => setContext(null)}>Dismiss</button>
         </div>}
       </li>)}
@@ -46,7 +46,7 @@ export function PaperExplorer({ files, selected, mainFile, editable, disabled, c
     <div className="paper-pane-title"><strong>Explorer</strong>{editable && <details className="paper-popover paper-add"><summary title="Add or organize files" aria-label="Add or organize files"><Plus size={17} /></summary><div>
       <button disabled={disabled} onClick={() => manage({ kind: 'text' })}><FilePlus2 size={15} /> New source file</button>
       <button disabled={disabled} onClick={() => manage({ kind: 'folder' })}><FolderPlus size={15} /> New folder</button>
-      <button disabled={disabled} onClick={() => manage()}>Upload / import / starter templates?</button>
+      <button disabled={disabled} onClick={() => manage()}>Upload or manage files</button>
     </div></details>}<button className="tool-button" aria-label="Collapse explorer" onClick={close}><X size={16} /></button></div>
     <label className="paper-file-filter"><Search size={15} /><span className="sr-only">Filter paper files</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Find a file..." type="search" /></label>
     <div ref={treeRoot} className="paper-tree-scroll">{visible.length ? tree() : <p className="muted">No matching files.</p>}</div>

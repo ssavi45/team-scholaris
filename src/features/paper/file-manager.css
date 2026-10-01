@@ -1,0 +1,14 @@
+.file-manager-primary-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.file-manager .file-manager-close { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 1px solid var(--border-medium); border-radius: 10px; background: var(--accent-light); color: var(--text-primary); cursor: pointer; }
+.file-manager .file-manager-close:hover:not(:disabled) { background: var(--accent); color: var(--bg-surface); border-color: var(--accent); }
+.file-manager .file-manager-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.file-manager .file-manager-close:disabled { opacity: .5; cursor: not-allowed; }
+.manager-file-list { list-style: none; padding: 0; margin: 12px 0; max-height: 34dvh; overflow: auto; border: 1px solid var(--border-medium); border-radius: 8px; }
+.manager-file-list li { display: flex; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid var(--border-medium); }
+.manager-file-list li:last-child { border-bottom: 0; }
+.manager-file-list li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
+.manager-file-list small { color: var(--text-secondary); display: block; }
+.manager-rename, .manager-extra { padding: 12px 0; border-top: 1px solid var(--border-medium); }
+.manager-extra > summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
+.file-manager .dialog-actions { position: sticky; bottom: -24px; padding: 16px 0; background: var(--bg-surface); border-top: 1px solid var(--border-medium); }
+@media (max-width: 540px) { .manager-file-list li { flex-wrap: wrap; } .manager-file-list li > span { flex-basis: 100%; } }

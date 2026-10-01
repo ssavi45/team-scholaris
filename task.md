@@ -1,8 +1,35 @@
 # Paper workspace roadmap and build tracker
 
-Last updated: 2026-09-30. **Equation composer and PAPER-11 implemented; manual acceptance pending.**
+Last updated: 2026-10-01. **PAPER-12 local architecture proof delivered; production integration gate open.**
 This is the only task tracker. Current product focus: make Paper the reason a
 research team chooses Scholaris. Previous delivery records remain below.
+
+## Paper file-management simplification
+
+- [x] Separate New source file / New folder dialogs from Upload or manage files;
+  validate names and persist with a single Create action.
+
+- [x] Clear upload/ZIP actions, file rows with Rename/Delete, one Save changes.
+- [x] Skip redundant import preview for collision-free, fully supported uploads.
+- [x] Delete all files, empty/support-only manifests, automatic main selection.
+- [x] Preserve empty-state history/reupload and recoverability after clearing.
+- [x] Apply two empty-manifest/history migrations locally; authenticated regressions.
+- [ ] Visual light/dark/mobile acceptance; hosted migration rollout when requested.
+
+## PAPER-12 current handoff
+
+- [x] Compare versioned saves, Yjs gateway, Broadcast-only and managed alternatives.
+- [x] Isolated Yjs prototype: convergence, local undo, offline/reordered/duplicate
+  packets, separate-process disk hydration and rejected-write recovery.
+- [x] Signed fixture identity/role checks, viewer/revocation, lifecycle generations,
+  coherent source snapshot, byte/schema/rate limits and failed-storage checks.
+- [x] Measure 2/5 clients at roughly 10/100/400 KiB; record local-only evidence.
+- [x] Define trusted transport/persistence, migration, legacy write fencing and rollback.
+- [ ] Real Supabase account and rendered CodeMirror/browser integration acceptance.
+- [ ] Choose hosting/operating budget; validate distributed persistence and revocation.
+
+No production coediting flag enabled. `npm run test:coediting` reproduces local
+evidence. The prototype is not a network service or production auth implementation.
 
 ## Recompile latency follow-up
 
@@ -41,7 +68,7 @@ research team chooses Scholaris. Previous delivery records remain below.
 - [ ] Manual dialog, keyboard, theme, saved-state, concurrency and history-restore acceptance.
 - [ ] Optional General Files asset-copy slice (deferred).
 
-PAPER-12 remains unstarted.
+PAPER-12 local prototype is delivered; its production integration gate remains open.
 
 ## Previous handoff: PAPER-10
 
@@ -440,24 +467,30 @@ Implementation: F2 opens selected-file actions; existing searchable/collapsible 
 **User story:** "Before you call this collaborative, prove two authors cannot
 silently overwrite each other."
 
-- [ ] Compare a maintained CRDT approach (candidate: Yjs + CodeMirror binding) with
+- [x] Compare a maintained CRDT approach (candidate: Yjs + CodeMirror binding) with
   the current versioned-write model. Record transport, hosting cost, persistence,
   operational complexity and migration decisions in DECISIONS before shipping.
 - [ ] Prove two authenticated clients editing the same and different files, offline
   reconnect, duplicate/reordered messages, process restart and document hydration.
-- [ ] Design trusted room admission, membership revocation, viewer restrictions,
+- [x] Design trusted room admission, membership revocation, viewer restrictions,
   document-size limits and rate limiting. Realtime broadcast alone is not durable
   storage and client-side readonly is not authorization.
-- [ ] Define one authoritative editing protocol; prevent old whole-file autosaves
+- [x] Define one authoritative editing protocol; prevent old whole-file autosaves
   from overwriting shared documents. Design migration/rollback from 05/06.
-- [ ] Define document/file IDs, rename/delete/restore semantics, checkpoint capture
+- [x] Define document/file IDs, rename/delete/restore semantics, checkpoint capture
   and a coherent compile/export snapshot while teammates continue typing.
-- [ ] Measure candidate at 2 and 5 concurrent editors with representative documents.
+- [x] Measure candidate at 2 and 5 concurrent editors with representative documents.
   Stop and report if safety or operating budget is not viable; do not fake presence.
 
 **Exit deliverable:** bounded prototype evidence, architecture decision and a
 reviewable rollout plan. The runtime/dependency/provider choice is not pre-approved
 by this roadmap. File locking may be an explicit interim mode, never labelled coediting.
+
+2026-10-01: local prototype/decision/rollout plan delivered. Checked design items
+describe the future protocol, not shipped server enforcement. Benchmark uses
+synthetic TeX and in-process client replicas. Signed fixture clients pass recovery
+and authorization-model tests; real Supabase sessions and browser transport remain
+the unchecked authenticated-client gate. Hosting and production acceptance remain open.
 
 ## PAPER-13 ? Real simultaneous writing
 
